@@ -2,10 +2,11 @@
 import os
 import logging
 import argparse
+import requests
 from datetime import datetime
-from scraper import USDAScraper
 from pdf_parser import PDFParser
 from database import DatabaseManager
+from config import REPORTS_CONFIG
 
 # Set up logging
 logging.basicConfig(
@@ -20,12 +21,71 @@ class USDAScraperPipeline:
 
     def __init__(self):
         """Initialize the pipeline."""
-        self.scraper = USDAScraper()
         self.db = DatabaseManager()
         self.temp_dir = os.path.join(os.path.dirname(__file__), 'temp')
 
         # Create temp directory if it doesn't exist
         os.makedirs(self.temp_dir, exist_ok=True)
+
+    def download_pdf(self, url: str, destination: str) -> bool:
+        """Download PDF from URL.
+
+        Args:
+            url: URL of PDF to download
+            destination: Path to save the PDF
+
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            response = requests.get(url, timeout=30)
+            response.raise_for_status()
+
+            with open(destination, 'wb') as f:
+                f.write(response.content)
+
+            logger.info(f"Successfully downloaded PDF to {destination}")
+            return True
+        except Exception as e:
+            logger.error(f"Error downloading PDF from {url}: {e}")
+            return False
+
+    def extract_pdf_date(self, pdf_path: str) -> str:
+        """Extract date from PDF content.
+
+        Args:
+            pdf_path: Path to PDF file
+
+        Returns:
+            Date string in YYYY-MM-DD format
+        """
+        try:
+            import pdfplumber
+            with pdfplumber.open(pdf_path) as pdf:
+                # Get first page text
+                first_page = pdf.pages[0]
+                text = first_page.extract_text()
+
+                # Look for date patterns like "November 21, 2025"
+                import re
+                date_pattern = r'(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2}),\s+(\d{4})'
+                match = re.search(date_pattern, text)
+
+                if match:
+                    month_name, day, year = match.groups()
+                    month_map = {
+                        'January': 1, 'February': 2, 'March': 3, 'April': 4,
+                        'May': 5, 'June': 6, 'July': 7, 'August': 8,
+                        'September': 9, 'October': 10, 'November': 11, 'December': 12
+                    }
+                    month = month_map[month_name]
+                    date_obj = datetime(int(year), month, int(day))
+                    return date_obj.strftime('%Y-%m-%d')
+        except Exception as e:
+            logger.warning(f"Could not extract date from PDF: {e}")
+
+        # Fallback to today's date
+        return datetime.now().strftime('%Y-%m-%d')
 
     def process_report(self, report_type: str, force: bool = False) -> bool:
         """Process a single report type.
@@ -40,33 +100,37 @@ class USDAScraperPipeline:
         logger.info(f"Processing report type: {report_type}")
 
         try:
-            # Step 1: Scrape to find the latest report
-            logger.info("Step 1: Fetching latest report information")
-            reports = self.scraper.get_latest_reports([report_type])
-
-            if not reports:
-                logger.error(f"No reports found for type: {report_type}")
+            # Step 1: Get report configuration
+            if report_type not in REPORTS_CONFIG:
+                logger.error(f"Unknown report type: {report_type}")
                 return False
 
-            report_info = reports[0]
-            pdf_url = report_info['pdf_url']
-            report_date = report_info['report_date']
+            report_config = REPORTS_CONFIG[report_type]
+            pdf_url = report_config['pdf_url']
 
-            # Convert datetime to date string
-            if isinstance(report_date, datetime):
-                report_date_str = report_date.strftime('%Y-%m-%d')
-            else:
-                report_date_str = str(report_date)
+            logger.info(f"Step 1: Downloading PDF from {pdf_url}")
 
-            logger.info(f"Found report: {pdf_url} (Date: {report_date_str})")
+            # Step 2: Download PDF to temp location
+            pdf_filename = f"{report_type}_temp.pdf"
+            pdf_path = os.path.join(self.temp_dir, pdf_filename)
 
-            # Step 2: Check if report already exists in database
+            if not self.download_pdf(pdf_url, pdf_path):
+                logger.error("Failed to download PDF")
+                return False
+
+            # Step 3: Extract date from PDF
+            logger.info("Step 2: Extracting report date from PDF")
+            report_date_str = self.extract_pdf_date(pdf_path)
+            logger.info(f"Report date: {report_date_str}")
+
+            # Step 4: Check if report already exists in database
             if not force and self.db.check_report_exists(report_type, report_date_str):
                 logger.info(f"Report already exists for {report_type} on {report_date_str}. Skipping.")
+                os.remove(pdf_path)
                 return True
 
-            # Step 3: Create report record in database
-            logger.info("Step 2: Creating report record in database")
+            # Step 5: Create report record in database
+            logger.info("Step 3: Creating report record in database")
             report_id = self.db.insert_report({
                 'report_type': report_type,
                 'report_date': report_date_str,
@@ -75,18 +139,16 @@ class USDAScraperPipeline:
 
             if not report_id:
                 logger.error("Failed to create report record in database")
+                os.remove(pdf_path)
                 return False
 
-            # Step 4: Download PDF
-            logger.info("Step 3: Downloading PDF")
-            pdf_filename = f"{report_type}_{report_date_str}.pdf"
-            pdf_path = os.path.join(self.temp_dir, pdf_filename)
+            # Rename PDF with actual date
+            final_pdf_filename = f"{report_type}_{report_date_str}.pdf"
+            final_pdf_path = os.path.join(self.temp_dir, final_pdf_filename)
+            os.rename(pdf_path, final_pdf_path)
+            pdf_path = final_pdf_path
 
-            if not self.scraper.download_pdf(pdf_url, pdf_path):
-                self.db.update_report_status(report_id, 'failed', 'Failed to download PDF')
-                return False
-
-            # Step 5: Parse PDF
+            # Step 6: Parse PDF
             logger.info("Step 4: Parsing PDF")
             try:
                 parser = PDFParser(pdf_path)
@@ -104,7 +166,7 @@ class USDAScraperPipeline:
                 self.db.update_report_status(report_id, 'failed', f'PDF parsing error: {str(e)}')
                 return False
 
-            # Step 6: Save to database
+            # Step 7: Save to database
             logger.info("Step 5: Saving pricing data to database")
             success_count = self.db.save_pricing_data(
                 report_id=report_id,
@@ -113,7 +175,7 @@ class USDAScraperPipeline:
                 pricing_data=pricing_data
             )
 
-            # Step 7: Update report status
+            # Step 8: Update report status
             if success_count > 0:
                 self.db.update_report_status(report_id, 'completed')
                 logger.info(f"Successfully processed report. Saved {success_count} price records.")
@@ -122,7 +184,7 @@ class USDAScraperPipeline:
                 logger.error("Failed to save any pricing data")
                 return False
 
-            # Step 8: Cleanup
+            # Step 9: Cleanup
             try:
                 os.remove(pdf_path)
                 logger.info("Cleaned up temporary PDF file")

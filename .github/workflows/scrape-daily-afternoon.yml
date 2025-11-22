@@ -1,16 +1,10 @@
-name: Scrape All Reports (Manual)
+name: Scrape Daily Afternoon Reports
 
 on:
-  workflow_dispatch:  # Manual trigger only
-    inputs:
-      force:
-        description: 'Force processing even if reports exist'
-        required: false
-        default: 'false'
-        type: choice
-        options:
-          - 'true'
-          - 'false'
+  schedule:
+    # Run Monday-Friday at 3 PM UTC (after report is typically published)
+    - cron: '0 15 * * 1-5'
+  workflow_dispatch:  # Allow manual trigger
 
 jobs:
   scrape:
@@ -38,16 +32,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run scraper for all reports
+      - name: Run scraper for daily afternoon report
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: |
-          if [ "${{ github.event.inputs.force }}" = "true" ]; then
-            python main.py --reports branded_beef ungraded_beef daily_afternoon --force --verbose
-          else
-            python main.py --reports branded_beef ungraded_beef daily_afternoon --verbose
-          fi
+          python main.py --reports daily_afternoon --verbose
 
       - name: Upload logs on failure
         if: failure()

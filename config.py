@@ -11,19 +11,26 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
 # USDA configuration
 USDA_BASE_URL = "https://www.ams.usda.gov"
-USDA_REPORTS_PAGE = f"{USDA_BASE_URL}/market-news/weekly-and-monthly-beef-reports"
 
-# Report configurations
+# Report configurations with direct PDF URLs
 REPORTS_CONFIG = {
     "branded_beef": {
         "name": "Boxed Beef Cuts-Branded Product-Negotiated Sales",
-        "schedule": "Monday",
+        "pdf_url": f"{USDA_BASE_URL}/mnreports/AMS_2457.pdf",
+        "schedule": "weekly",  # Mondays
         "report_type": "branded_beef"
     },
     "ungraded_beef": {
         "name": "Boxed Beef Cuts-Ungraded Product",
-        "schedule": "Monday",
+        "pdf_url": f"{USDA_BASE_URL}/mnreports/AMS_2464.pdf",
+        "schedule": "weekly",  # Mondays
         "report_type": "ungraded_beef"
+    },
+    "daily_afternoon": {
+        "name": "National Daily Boxed Beef Cutout And Boxed Beef Cuts - Afternoon",
+        "pdf_url": f"{USDA_BASE_URL}/mnreports/ams_2453.pdf",
+        "schedule": "daily",  # Monday-Friday
+        "report_type": "daily_afternoon"
     }
 }
 

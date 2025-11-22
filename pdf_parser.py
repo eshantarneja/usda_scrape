@@ -55,6 +55,7 @@ class PDFParser:
 
         For branded_beef: Extracts from "Upper 2/3 Choice Items Cuts" section
         For ungraded_beef: Extracts from "Ungraded Cuts, Fat Limitations 1-6" section
+        For daily_afternoon: Extracts from multiple sections (Choice, Select, Mixed, Ground Beef)
 
         Args:
             lines: List of text lines extracted from PDF
@@ -63,6 +64,13 @@ class PDFParser:
         Returns:
             List of dictionaries containing product pricing data
         """
+        if report_type == 'daily_afternoon':
+            return self._parse_daily_report(lines, report_type)
+        else:
+            return self._parse_weekly_report(lines, report_type)
+
+    def _parse_weekly_report(self, lines: List[str], report_type: str) -> List[Dict]:
+        """Parse weekly report with single target section."""
         pricing_data = []
         in_target_section = False
         current_category = None
@@ -75,7 +83,7 @@ class PDFParser:
         elif report_type == 'ungraded_beef':
             target_section_keywords = ['ungraded cuts', 'fat limitations']
             section_category = 'Ungraded Cuts'
-            end_keywords = ['branded', 'choice']  # End when we hit a different section
+            end_keywords = ['branded', 'choice']
         else:
             logger.warning(f"Unknown report type: {report_type}")
             return pricing_data
@@ -105,9 +113,7 @@ class PDFParser:
             if not line.strip() or self._is_header_row(line):
                 continue
 
-            # Parse data line using regex
-            # Format: "109E 1 Rib, ribeye, lip-on, bn-in 55 119,191 1,266.00 - 1,616.00 1,359.01"
-            # Pattern: IMPS_CODE NUMBER DESCRIPTION TRADES POUNDS LOW_PRICE - HIGH_PRICE WEIGHTED_AVG
+            # Parse data line
             parsed = self._parse_data_line(line)
 
             if parsed:
@@ -145,6 +151,85 @@ class PDFParser:
         logger.info(f"Extracted {len(pricing_data)} pricing records from {section_category if pricing_data else 'target'} section")
         return pricing_data
 
+    def _parse_daily_report(self, lines: List[str], report_type: str) -> List[Dict]:
+        """Parse daily report with multiple sections."""
+        pricing_data = []
+        current_section = None
+
+        # Section markers for daily report
+        section_markers = {
+            'Choice Cuts': ('choice cuts', 'fat limitations'),
+            'Select Cuts': ('select cuts', 'fat limitations'),
+            'Choice, Select & Ungraded': ('choice, select & ungraded', 'fat limitations'),
+            'Ground Beef': ('gb - steer/heifer source', '10 pound chub')
+        }
+
+        logger.info(f"Processing {len(lines)} lines for daily report")
+
+        for line_idx, line in enumerate(lines):
+            line_lower = line.lower().strip()
+
+            # Check which section we're in
+            for section_name, keywords in section_markers.items():
+                if all(kw in line_lower for kw in keywords):
+                    current_section = section_name
+                    logger.info(f"Found section at line {line_idx}: {section_name}")
+                    continue
+
+            # Skip if not in any section
+            if not current_section:
+                continue
+
+            # Skip header rows and empty lines
+            if not line.strip() or self._is_header_row(line):
+                continue
+
+            # Parse based on section type
+            if current_section == 'Ground Beef':
+                parsed = self._parse_ground_beef_line(line)
+            else:
+                parsed = self._parse_data_line(line)
+
+            if parsed:
+                if current_section == 'Ground Beef':
+                    # Ground beef format: no IMPS code
+                    product_name = parsed['product_name']
+                    imps_code = None
+                else:
+                    # Standard format with IMPS code
+                    imps_code = parsed['imps_code']
+                    subprimal = parsed['description']
+                    product_name = f"{imps_code} - {subprimal}"
+
+                trades = parsed['trades']
+                pounds = parsed['pounds']
+                low_price = parsed.get('low_price')
+                high_price = parsed.get('high_price')
+                weighted_avg = parsed.get('weighted_avg')
+
+                # Create pricing record
+                pricing_record = {
+                    'product_name': product_name,
+                    'product_code': imps_code,
+                    'price': weighted_avg,
+                    'low_price': low_price,
+                    'high_price': high_price,
+                    'volume': pounds,
+                    'report_type': report_type,
+                    'category': current_section,
+                    'additional_data': {
+                        'num_trades': trades,
+                        'imps_code': imps_code,
+                        'sub_primal': subprimal if current_section != 'Ground Beef' else product_name
+                    }
+                }
+
+                pricing_data.append(pricing_record)
+                logger.debug(f"Parsed: {product_name} - Avg: ${weighted_avg}, Range: ${low_price}-${high_price}, Volume: {pounds} lbs, Trades: {trades}")
+
+        logger.info(f"Extracted {len(pricing_data)} pricing records from daily report")
+        return pricing_data
+
     def _parse_data_line(self, line: str) -> Optional[Dict]:
         """Parse a single data line into components.
 
@@ -174,6 +259,41 @@ class PDFParser:
             return {
                 'imps_code': imps_code,
                 'description': description,
+                'trades': trades,
+                'pounds': pounds,
+                'low_price': low_price,
+                'high_price': high_price,
+                'weighted_avg': weighted_avg
+            }
+
+        return None
+
+    def _parse_ground_beef_line(self, line: str) -> Optional[Dict]:
+        """Parse a ground beef data line.
+
+        Args:
+            line: Text line to parse
+
+        Returns:
+            Dictionary with parsed components or None if not a valid data line
+        """
+        # Pattern: PRODUCT_NAME TRADES POUNDS LOW_PRICE - HIGH_PRICE WEIGHTED_AVG
+        # Example: "Ground Beef 73%                         4      29,506    330.00 -  349.50        348.46"
+
+        # Use regex to match the pattern - ground beef has no IMPS code
+        pattern = r'^(.+?)\s+(\d+)\s+([\d,]+)\s+([\d,.]+)\s*-\s*([\d,.]+)\s+([\d,.]+)\s*$'
+        match = re.match(pattern, line.strip())
+
+        if match:
+            product_name = match.group(1).strip()
+            trades = self._extract_number(match.group(2), is_integer=True)
+            pounds = self._extract_number(match.group(3), is_integer=True)
+            low_price = self._extract_number(match.group(4))
+            high_price = self._extract_number(match.group(5))
+            weighted_avg = self._extract_number(match.group(6))
+
+            return {
+                'product_name': product_name,
                 'trades': trades,
                 'pounds': pounds,
                 'low_price': low_price,
