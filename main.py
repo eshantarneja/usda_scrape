@@ -246,6 +246,12 @@ def main():
         help='Enable verbose logging'
     )
 
+    parser.add_argument(
+        '--calculate-metrics',
+        action='store_true',
+        help='Calculate USDA metrics after scraping'
+    )
+
     args = parser.parse_args()
 
     if args.verbose:
@@ -254,6 +260,14 @@ def main():
     # Run pipeline
     pipeline = USDAScraperPipeline()
     success = pipeline.run(args.reports, args.force)
+
+    # Calculate metrics if requested
+    if args.calculate_metrics and success:
+        logger.info("Starting metrics calculation...")
+        from calculate_metrics import MetricsCalculator
+        calculator = MetricsCalculator()
+        metrics_count = calculator.calculate_all_metrics()
+        logger.info(f"Metrics calculation complete. Created {metrics_count} metric records.")
 
     # Exit with appropriate code
     exit(0 if success else 1)

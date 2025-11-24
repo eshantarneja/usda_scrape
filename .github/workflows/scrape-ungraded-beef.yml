@@ -1,10 +1,7 @@
-name: Scrape Ungraded Beef Reports
+name: Scrape Ungraded Beef Report (Manual)
 
 on:
-  schedule:
-    # Run every Monday at 2 PM UTC (when report is typically published)
-    - cron: '0 14 * * 1'
-  workflow_dispatch:  # Allow manual trigger
+  workflow_dispatch:  # Manual trigger only
 
 jobs:
   scrape:
@@ -37,7 +34,7 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: |
-          python main.py --reports ungraded_beef --verbose
+          python main.py --reports ungraded_beef --calculate-metrics --verbose
 
       - name: Upload logs on failure
         if: failure()
