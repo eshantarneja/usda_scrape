@@ -85,6 +85,9 @@ class DatabaseManager:
     def upsert_product(self, product_data: Dict) -> Optional[str]:
         """Insert or update a product record.
 
+        Products are now unique by product_name only (no report_type or category).
+        Category and report_type are stored in usda_prices instead.
+
         Args:
             product_data: Dictionary containing product information
 
@@ -92,32 +95,20 @@ class DatabaseManager:
             Product ID (UUID) or None if operation failed
         """
         try:
-            # Check if product already exists
-            # For daily reports, same product can appear in multiple categories
-            # so we need to check by product_name, report_type, AND category
-            query = self.client.table('usda_products').select('id').eq(
+            # Check if product already exists by product_name only
+            existing = self.client.table('usda_products').select('id').eq(
                 'product_name', product_data['product_name']
-            ).eq(
-                'report_type', product_data['report_type']
-            )
-
-            # Add category filter if present
-            if product_data.get('category'):
-                query = query.eq('category', product_data['category'])
-
-            existing = query.execute()
+            ).execute()
 
             if existing.data and len(existing.data) > 0:
                 product_id = existing.data[0]['id']
                 logger.debug(f"Product already exists with ID: {product_id}")
                 return product_id
 
-            # Insert new product
+            # Insert new product (only product_name and product_code)
             result = self.client.table('usda_products').insert({
                 'product_name': product_data['product_name'],
-                'product_code': product_data.get('product_code'),
-                'category': product_data.get('category'),
-                'report_type': product_data['report_type']
+                'product_code': product_data.get('product_code')
             }).execute()
 
             if result.data and len(result.data) > 0:
@@ -142,12 +133,20 @@ class DatabaseManager:
             True if successful, False otherwise
         """
         try:
-            # Check if price already exists for this product and date
-            existing = self.client.table('usda_prices').select('id').eq(
+            # Check if price already exists for this product, date, category, and report_type
+            query = self.client.table('usda_prices').select('id').eq(
                 'product_id', price_data['product_id']
             ).eq(
                 'report_date', price_data['report_date']
-            ).execute()
+            )
+
+            # Add category and report_type filters
+            if price_data.get('category'):
+                query = query.eq('category', price_data['category'])
+            if price_data.get('report_type'):
+                query = query.eq('report_type', price_data['report_type'])
+
+            existing = query.execute()
 
             if existing.data and len(existing.data) > 0:
                 # Update existing price
@@ -157,6 +156,8 @@ class DatabaseManager:
                     'high_price': price_data.get('high_price'),
                     'volume': price_data.get('volume'),
                     'unit': price_data.get('unit'),
+                    'category': price_data.get('category'),
+                    'report_type': price_data.get('report_type'),
                     'additional_data': price_data.get('additional_data', {})
                 }).eq('id', existing.data[0]['id']).execute()
                 logger.debug(f"Updated existing price record")
@@ -171,6 +172,8 @@ class DatabaseManager:
                     'high_price': price_data.get('high_price'),
                     'volume': price_data.get('volume'),
                     'unit': price_data.get('unit', 'USD'),
+                    'category': price_data.get('category'),
+                    'report_type': price_data.get('report_type'),
                     'additional_data': price_data.get('additional_data', {})
                 }).execute()
                 logger.debug(f"Inserted new price record")
@@ -197,19 +200,17 @@ class DatabaseManager:
         success_count = 0
 
         for record in pricing_data:
-            # First, ensure the product exists
+            # First, ensure the product exists (by name only, no category/report_type)
             product_id = self.upsert_product({
                 'product_name': record['product_name'],
-                'product_code': record.get('product_code'),
-                'category': record.get('category'),
-                'report_type': report_type
+                'product_code': record.get('product_code')
             })
 
             if not product_id:
                 logger.warning(f"Failed to get product ID for: {record['product_name']}")
                 continue
 
-            # Insert the price record
+            # Insert the price record (with category and report_type)
             price_record = {
                 'product_id': product_id,
                 'report_id': report_id,
@@ -219,6 +220,8 @@ class DatabaseManager:
                 'high_price': record.get('high_price'),
                 'volume': record.get('volume'),
                 'unit': 'USD',
+                'category': record.get('category'),
+                'report_type': report_type,
                 'additional_data': record.get('additional_data', {})
             }
 
