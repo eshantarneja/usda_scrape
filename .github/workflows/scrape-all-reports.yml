@@ -2,8 +2,8 @@ name: Scrape All Reports (Daily)
 
 on:
   schedule:
-    # Run daily at 3 PM UTC (covers both daily and weekly reports)
-    - cron: '0 15 * * *'
+    # Run daily at 3 AM UTC (10 PM EST / 11 PM EDT)
+    - cron: '0 3 * * *'
   workflow_dispatch:  # Also allow manual trigger
     inputs:
       force:
