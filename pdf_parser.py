@@ -157,12 +157,13 @@ class PDFParser:
         current_section = None
 
         # Section markers for daily report
-        section_markers = {
-            'Choice Cuts': ('choice cuts', 'fat limitations'),
-            'Select Cuts': ('select cuts', 'fat limitations'),
-            'Choice, Select & Ungraded': ('choice, select & ungraded', 'fat limitations'),
-            'Ground Beef': ('gb - steer/heifer source', '10 pound chub')
-        }
+        # ORDER MATTERS: More specific matches must come first!
+        section_markers = [
+            ('Choice, Select & Ungraded', ('choice, select & ungraded', 'fat limitations')),
+            ('Ground Beef', ('gb - steer/heifer source', '10 pound chub')),
+            ('Choice Cuts', ('choice cuts', 'fat limitations')),
+            ('Select Cuts', ('select cuts', 'fat limitations')),
+        ]
 
         logger.info(f"Processing {len(lines)} lines for daily report")
 
@@ -170,11 +171,17 @@ class PDFParser:
             line_lower = line.lower().strip()
 
             # Check which section we're in
-            for section_name, keywords in section_markers.items():
+            section_found = False
+            for section_name, keywords in section_markers:
                 if all(kw in line_lower for kw in keywords):
                     current_section = section_name
-                    logger.info(f"Found section at line {line_idx}: {section_name}")
-                    continue
+                    logger.info(f"Found section at line {line_idx}: {section_name} | Line: {line[:80]}")
+                    section_found = True
+                    break
+
+            # If we just found a section header, skip to next line
+            if section_found:
+                continue
 
             # Skip if not in any section
             if not current_section:
@@ -207,6 +214,12 @@ class PDFParser:
                 high_price = parsed.get('high_price')
                 weighted_avg = parsed.get('weighted_avg')
 
+                # Log first parse of each section with line details
+                if current_section:
+                    section_count = sum(1 for p in pricing_data if p['category'] == current_section)
+                    if section_count == 0:
+                        logger.info(f"First parse in {current_section} at line {line_idx}: {imps_code} | Trades: {trades}, Pounds: {pounds}, Avg: ${weighted_avg}")
+
                 # Create pricing record
                 pricing_record = {
                     'product_name': product_name,
@@ -225,9 +238,14 @@ class PDFParser:
                 }
 
                 pricing_data.append(pricing_record)
-                logger.debug(f"Parsed: {product_name} - Avg: ${weighted_avg}, Range: ${low_price}-${high_price}, Volume: {pounds} lbs, Trades: {trades}")
+                logger.debug(f"[{current_section}] Line {line_idx}: {product_name} - Avg: ${weighted_avg}, Range: ${low_price}-${high_price}, Volume: {pounds} lbs, Trades: {trades}")
 
         logger.info(f"Extracted {len(pricing_data)} pricing records from daily report")
+        # Log counts by section
+        from collections import Counter
+        section_counts = Counter(p['category'] for p in pricing_data)
+        for section, count in section_counts.items():
+            logger.info(f"  {section}: {count} records")
         return pricing_data
 
     def _parse_data_line(self, line: str) -> Optional[Dict]:

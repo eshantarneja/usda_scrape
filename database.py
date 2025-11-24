@@ -93,11 +93,19 @@ class DatabaseManager:
         """
         try:
             # Check if product already exists
-            existing = self.client.table('usda_products').select('id').eq(
+            # For daily reports, same product can appear in multiple categories
+            # so we need to check by product_name, report_type, AND category
+            query = self.client.table('usda_products').select('id').eq(
                 'product_name', product_data['product_name']
             ).eq(
                 'report_type', product_data['report_type']
-            ).execute()
+            )
+
+            # Add category filter if present
+            if product_data.get('category'):
+                query = query.eq('category', product_data['category'])
+
+            existing = query.execute()
 
             if existing.data and len(existing.data) > 0:
                 product_id = existing.data[0]['id']
