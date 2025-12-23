@@ -230,8 +230,8 @@ def main():
     parser.add_argument(
         '--reports',
         nargs='+',
-        default=['branded_beef', 'ungraded_beef'],
-        help='Report types to process (default: branded_beef ungraded_beef)'
+        default=['branded_beef', 'ungraded_beef', 'pork_cuts'],
+        help='Report types to process (default: branded_beef ungraded_beef pork_cuts)'
     )
 
     parser.add_argument(

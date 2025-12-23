@@ -31,6 +31,12 @@ REPORTS_CONFIG = {
         "pdf_url": f"{USDA_BASE_URL}/mnreports/ams_2453.pdf",
         "schedule": "daily",  # Monday-Friday
         "report_type": "daily_afternoon"
+    },
+    "pork_cuts": {
+        "name": "National Daily Pork Report FOB Omaha",
+        "pdf_url": f"{USDA_BASE_URL}/mnreports/ams_2498.pdf",
+        "schedule": "daily",  # Monday-Friday
+        "report_type": "pork_cuts"
     }
 }
 

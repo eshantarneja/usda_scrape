@@ -66,6 +66,8 @@ class PDFParser:
         """
         if report_type == 'daily_afternoon':
             return self._parse_daily_report(lines, report_type)
+        elif report_type == 'pork_cuts':
+            return self._parse_pork_report(lines, report_type)
         else:
             return self._parse_weekly_report(lines, report_type)
 
@@ -320,6 +322,178 @@ class PDFParser:
             }
 
         return None
+
+    def _parse_pork_report(self, lines: List[str], report_type: str) -> List[Dict]:
+        """Parse pork report with category headers and product lines.
+
+        Pork reports have a different format than beef:
+        - No IMPS codes
+        - Category headers (e.g., "Loin", "Butt") followed by product lines
+        - Format: ProductName Pounds Low-High Avg
+        """
+        pricing_data = []
+        current_category = None
+        in_data_section = False
+
+        logger.info(f"Processing {len(lines)} lines for pork report")
+
+        for line_idx, line in enumerate(lines):
+            line_stripped = line.strip()
+
+            # Skip empty lines
+            if not line_stripped:
+                continue
+
+            # Check if this is the start of data section (after header info)
+            # Look for "Pounds" and "Price Range" to identify we're in the data area
+            # This must come BEFORE _is_header_row check since column headers contain those keywords
+            if 'pounds' in line_stripped.lower() and 'price' in line_stripped.lower():
+                in_data_section = True
+                logger.info(f"Found data section header at line {line_idx}: {line_stripped}")
+                continue
+
+            if not in_data_section:
+                continue
+
+            # Skip header rows (only after we're in data section)
+            if self._is_header_row(line_stripped):
+                continue
+
+            # Try to parse as a product line first
+            parsed = self._parse_pork_line(line_stripped)
+
+            if parsed:
+                # This is a product line with price data
+                product_name = parsed['product_name']
+
+                # Build full product name with category prefix
+                if current_category:
+                    full_product_name = f"{current_category} - {product_name}"
+                else:
+                    full_product_name = product_name
+
+                pricing_record = {
+                    'product_name': full_product_name,
+                    'product_code': None,  # Pork has no IMPS codes
+                    'price': parsed['weighted_avg'],
+                    'low_price': parsed['low_price'],
+                    'high_price': parsed['high_price'],
+                    'volume': parsed['pounds'],
+                    'report_type': report_type,
+                    'category': current_category,
+                    'meat_type': 'pork',
+                    'additional_data': {
+                        'sub_primal': product_name
+                    }
+                }
+
+                pricing_data.append(pricing_record)
+                logger.debug(f"[{current_category}] Parsed: {full_product_name} - Avg: ${parsed['weighted_avg']}, Volume: {parsed['pounds']} lbs")
+            else:
+                # This might be a category header (line without price data)
+                # Category headers are typically short text without numbers
+                if self._is_pork_category_header(line_stripped):
+                    current_category = line_stripped
+                    logger.info(f"Found category header at line {line_idx}: {current_category}")
+
+        logger.info(f"Extracted {len(pricing_data)} pricing records from pork report")
+
+        # Log counts by category
+        from collections import Counter
+        category_counts = Counter(p['category'] for p in pricing_data if p['category'])
+        for category, count in category_counts.items():
+            logger.info(f"  {category}: {count} records")
+
+        return pricing_data
+
+    def _parse_pork_line(self, line: str) -> Optional[Dict]:
+        """Parse a pork product data line.
+
+        Args:
+            line: Text line to parse
+
+        Returns:
+            Dictionary with parsed components or None if not a valid data line
+        """
+        # Pattern: ProductName Pounds Low - High Avg
+        # Example: "1/4 Trimmed Loin VAC    171,141    92.50 - 109.90    97.72"
+
+        pattern = r'^(.+?)\s+([\d,]+)\s+([\d,.]+)\s*-\s*([\d,.]+)\s+([\d,.]+)\s*$'
+        match = re.match(pattern, line.strip())
+
+        if match:
+            product_name = match.group(1).strip()
+            pounds = self._extract_number(match.group(2), is_integer=True)
+            low_price = self._extract_number(match.group(3))
+            high_price = self._extract_number(match.group(4))
+            weighted_avg = self._extract_number(match.group(5))
+
+            # Validate that we have reasonable values
+            if pounds and low_price and high_price and weighted_avg:
+                return {
+                    'product_name': product_name,
+                    'pounds': pounds,
+                    'low_price': low_price,
+                    'high_price': high_price,
+                    'weighted_avg': weighted_avg
+                }
+
+        return None
+
+    def _is_pork_category_header(self, line: str) -> bool:
+        """Check if a line is a pork category header.
+
+        Category headers are short text lines without numeric price data.
+        Examples: "Loin", "Butt", "Ham", "Belly", "Picnic", "Sparerib"
+
+        Args:
+            line: Text line to check
+
+        Returns:
+            True if this looks like a category header
+        """
+        # Known pork category headers
+        known_categories = [
+            'loin', 'butt', 'ham', 'belly', 'picnic', 'sparerib',
+            'jowl', 'variety', 'trim', 'fat', 'skin'
+        ]
+
+        line_lower = line.lower().strip()
+
+        # Check if this is a known category (exact or starts with)
+        for cat in known_categories:
+            if line_lower == cat or line_lower.startswith(cat + ' '):
+                return True
+
+        # Skip if line ends with '-' (these are product lines with no data)
+        if line.strip().endswith('-'):
+            return False
+
+        # Skip if line is too long (likely not a category header)
+        if len(line) > 30:
+            return False
+
+        # Skip if line contains price-like patterns
+        if re.search(r'\d+\.\d{2}', line):
+            return False
+
+        # Skip if line contains large numbers (like pounds)
+        if re.search(r'\d{3,}', line):
+            return False
+
+        # Skip common non-category lines
+        skip_patterns = ['total', 'average', 'source', 'usda', 'page', 'report',
+                        'national', 'weekly', 'daily', 'agricultural', 'marketing',
+                        'vac', 'fzn', 'combo', 'paper', 'poly', 'bnls', 'bone']
+        if any(skip in line_lower for skip in skip_patterns):
+            return False
+
+        # If it's a very short text line (1-2 words) with no numbers, it might be a category
+        words = line.split()
+        if len(words) <= 2 and not re.search(r'\d', line):
+            return True
+
+        return False
 
     def _clean_text(self, text: Optional[str]) -> str:
         """Clean and normalize text from PDF.

@@ -43,12 +43,16 @@ class DatabaseManager:
                 logger.info(f"Report already exists with ID: {report_id}")
                 return report_id
 
+            # Determine category based on report_type
+            category = 'pork' if report_data['report_type'] == 'pork_cuts' else 'beef'
+
             # Insert new report
             result = self.client.table('usda_reports').insert({
                 'report_type': report_data['report_type'],
                 'report_date': report_data['report_date'],
                 'pdf_url': report_data['pdf_url'],
-                'status': 'processing'
+                'status': 'processing',
+                'category': category
             }).execute()
 
             if result.data and len(result.data) > 0:
@@ -86,30 +90,59 @@ class DatabaseManager:
         """Insert or update a product record.
 
         Products are now unique by product_name only (no report_type or category).
-        Category and report_type are stored in usda_prices instead.
+        Category field stores meat type ('beef' or 'pork').
 
         Args:
             product_data: Dictionary containing product information
+                - product_name: Name of the product
+                - product_code: IMPS code (optional, None for pork)
+                - category: Meat type ('beef' or 'pork')
 
         Returns:
             Product ID (UUID) or None if operation failed
         """
         try:
             # Check if product already exists by product_name only
-            existing = self.client.table('usda_products').select('id').eq(
-                'product_name', product_data['product_name']
-            ).execute()
+            # Try with category column first, fall back to without if column doesn't exist
+            try:
+                existing = self.client.table('usda_products').select('id, category').eq(
+                    'product_name', product_data['product_name']
+                ).execute()
+                has_category_column = True
+            except Exception:
+                existing = self.client.table('usda_products').select('id').eq(
+                    'product_name', product_data['product_name']
+                ).execute()
+                has_category_column = False
 
             if existing.data and len(existing.data) > 0:
                 product_id = existing.data[0]['id']
+
+                # Update category if column exists and it's not set
+                if has_category_column:
+                    existing_category = existing.data[0].get('category')
+                    if not existing_category and product_data.get('category'):
+                        try:
+                            self.client.table('usda_products').update({
+                                'category': product_data['category']
+                            }).eq('id', product_id).execute()
+                            logger.debug(f"Updated product {product_id} with category: {product_data['category']}")
+                        except Exception:
+                            pass  # Category column might not exist
+
                 logger.debug(f"Product already exists with ID: {product_id}")
                 return product_id
 
-            # Insert new product (only product_name and product_code)
-            result = self.client.table('usda_products').insert({
+            # Insert new product
+            insert_data = {
                 'product_name': product_data['product_name'],
                 'product_code': product_data.get('product_code')
-            }).execute()
+            }
+            # Only include category if column exists
+            if has_category_column and product_data.get('category'):
+                insert_data['category'] = product_data['category']
+
+            result = self.client.table('usda_products').insert(insert_data).execute()
 
             if result.data and len(result.data) > 0:
                 product_id = result.data[0]['id']
@@ -199,11 +232,15 @@ class DatabaseManager:
         """
         success_count = 0
 
+        # Determine meat type based on report_type
+        meat_type = 'pork' if report_type == 'pork_cuts' else 'beef'
+
         for record in pricing_data:
-            # First, ensure the product exists (by name only, no category/report_type)
+            # First, ensure the product exists with meat type category
             product_id = self.upsert_product({
                 'product_name': record['product_name'],
-                'product_code': record.get('product_code')
+                'product_code': record.get('product_code'),
+                'category': meat_type
             })
 
             if not product_id:
