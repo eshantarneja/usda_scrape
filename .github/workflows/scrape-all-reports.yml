@@ -47,9 +47,9 @@ jobs:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: |
           if [ "${{ github.event.inputs.force }}" = "true" ]; then
-            python main.py --reports branded_beef ungraded_beef daily_afternoon --force --calculate-metrics --verbose
+            python main.py --reports branded_beef ungraded_beef daily_afternoon pork_cuts --force --calculate-metrics --verbose
           else
-            python main.py --reports branded_beef ungraded_beef daily_afternoon --calculate-metrics --verbose
+            python main.py --reports branded_beef ungraded_beef daily_afternoon pork_cuts --calculate-metrics --verbose
           fi
 
       - name: Upload logs on failure
