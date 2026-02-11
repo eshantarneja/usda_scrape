@@ -16,6 +16,15 @@ on:
           - 'false'
 
 jobs:
+  trigger-dev:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    steps:
+      - name: Trigger dev branch workflow
+        run: gh workflow run "Scrape All Reports (Daily)" --ref dev
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   scrape:
     runs-on: ubuntu-latest
 
