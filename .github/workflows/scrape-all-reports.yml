@@ -16,15 +16,6 @@ on:
           - 'false'
 
 jobs:
-  trigger-dev:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'schedule'
-    steps:
-      - name: Trigger dev branch workflow
-        run: gh workflow run "Scrape All Reports (Daily)" --ref dev
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
   scrape:
     runs-on: ubuntu-latest
 
@@ -42,13 +33,8 @@ jobs:
 
       - name: Fetch Supabase secrets from GCP
         run: |
-          if [ "${{ github.ref_name }}" = "main" ]; then
-            SUPABASE_URL=$(gcloud secrets versions access latest --secret=SUPABASE_URL --project=whetstone-477916)
-            SUPABASE_KEY=$(gcloud secrets versions access latest --secret=SUPABASE_KEY --project=whetstone-477916)
-          else
-            SUPABASE_URL=$(gcloud secrets versions access latest --secret=supabase-url-whetstone-dev --project=whetstone-477916)
-            SUPABASE_KEY=$(gcloud secrets versions access latest --secret=supabase-key-whetstone-dev --project=whetstone-477916)
-          fi
+          SUPABASE_URL=$(gcloud secrets versions access latest --secret=SUPABASE_URL --project=whetstone-477916)
+          SUPABASE_KEY=$(gcloud secrets versions access latest --secret=SUPABASE_KEY --project=whetstone-477916)
           echo "::add-mask::$SUPABASE_URL"
           echo "::add-mask::$SUPABASE_KEY"
           echo "SUPABASE_URL=$SUPABASE_URL" >> $GITHUB_ENV

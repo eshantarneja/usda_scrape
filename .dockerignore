@@ -1,0 +1,9 @@
+.git
+.env
+*.pdf
+logs/
+.github/
+venv/
+__pycache__/
+temp/
+.claude/
