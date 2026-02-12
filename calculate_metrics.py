@@ -30,23 +30,33 @@ class MetricsCalculator:
         logger.info("Truncating existing metrics data")
         self.db.client.table('usda_metrics').delete().neq('id', '00000000-0000-0000-0000-000000000000').execute()
 
-        # Step 2: Get all prices and extract unique combinations
-        all_prices = self.db.client.table('usda_prices').select(
-            'product_id, category, report_type'
-        ).not_.is_('product_id', 'null').execute()
-
-        # Extract unique combinations
+        # Step 2: Get all unique product/category/report_type combinations
         seen = set()
         combinations = []
-        for row in all_prices.data:
-            key = (row['product_id'], row.get('category'), row['report_type'])
-            if key not in seen:
-                seen.add(key)
-                combinations.append({
-                    'product_id': row['product_id'],
-                    'category': row.get('category'),
-                    'report_type': row['report_type']
-                })
+        batch_size = 1000
+        offset = 0
+
+        while True:
+            batch = self.db.client.table('usda_prices').select(
+                'product_id, category, report_type'
+            ).not_.is_('product_id', 'null').range(offset, offset + batch_size - 1).execute()
+
+            if not batch.data:
+                break
+
+            for row in batch.data:
+                key = (row['product_id'], row.get('category'), row['report_type'])
+                if key not in seen:
+                    seen.add(key)
+                    combinations.append({
+                        'product_id': row['product_id'],
+                        'category': row.get('category'),
+                        'report_type': row['report_type']
+                    })
+
+            if len(batch.data) < batch_size:
+                break
+            offset += batch_size
 
         logger.info(f"Found {len(combinations)} unique product/category/report_type combinations")
 
