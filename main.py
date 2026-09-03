@@ -269,6 +269,19 @@ def main():
         metrics_count = calculator.calculate_all_metrics()
         logger.info(f"Metrics calculation complete. Created {metrics_count} metric records.")
 
+    # Push the beef reports to the Demo global catalog (only where the Demo
+    # secrets are mounted — the dev Cloud Run job; the prod GitHub workflow
+    # has none and is unaffected). Latest completed report per type; the load
+    # is idempotent, so a re-run after a failure is safe.
+    from demo_sync import demo_enabled, sync as demo_sync
+    if demo_enabled():
+        logger.info("Syncing beef reports to Demo...")
+        if not demo_sync(args.reports):
+            logger.error("Demo sync failed for at least one report (scrape itself succeeded)")
+            success = False
+    else:
+        logger.info("Demo sync skipped: DEMO_SUPABASE_URL / DEMO_SUPABASE_KEY not set")
+
     # Exit with appropriate code
     exit(0 if success else 1)
 
