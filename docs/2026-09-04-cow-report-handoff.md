@@ -100,9 +100,9 @@ an IMPS code and 6 are the codeless 100% LEAN items.
 Same for `scripts/load_demo_usda_beef.py` in the Lora_Agents repo, which is
 the manual/backfill twin of this file.
 
-### 5. Demo loader — migration 085 in `Lora_Agents-demo-port`
+### 5. Demo loader — migration 086 in `Lora_Agents-demo-port` (085 is taken: supplier hook)
 
-File: `companies/demo/catalog_mapping/migrations/085_usda_cow_beef_load.sql`.
+File: `companies/demo/catalog_mapping/migrations/086_usda_cow_beef_load.sql`.
 Show it to Eshan before applying; project `oyyukfumyeumwgyodmkb`.
 Three edits to `public.usda_boxed_beef_load` (current body is in 084):
 
