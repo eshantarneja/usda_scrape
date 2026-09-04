@@ -1,0 +1,139 @@
+===== PAGE 1 =====
+National Weekly Cutter Cow Cutout And Boxed Cow Beef Cuts
+USDA Estimate Cutter Cow Carcass Cut-Out Value - Negotiated Sales
+Agricultural Marketing Service September 04, 2026
+Livestock, Poultry, and Grain Market News LM_XB461
+Email us with accessibility issues regarding this report.
+Based on negotiated prices and volume of cow cuts delivered within 0-21 days and on average industry cutting yields. Values reflect U.S.
+dollars per 100 pounds.
+Cutter 90%
+350#/up
+Current Cutout Value: 346.58
+Change from prior week: -3.58
+Item Price Value Change
+90% lean 449.29 250.88 (1.68)
+100% lean inside round 478.74 11.11 (0.15)
+100% lean, flats and eyes 483.69 11.22 (0.33)
+100% lean, S.P.B. 485.42 24.27 (0.57)
+Chuck Tender 434.16 4.34 (0.21)
+Knuckle 4-7 lbs. 434.84 11.00 (1.46)
+Tenderloin 2-3 lbs. 839.24 4.45 0.51
+Tenderloin 3-4 lbs. 872.42 6.46 (0.13)
+Ribeye Roll 4-6 lbs. 611.75 6.42 (0.15)
+Ribeye Roll 6-8 lbs. 705.66 5.22 0.37
+Ribeye Roll 8up lbs. 697.58 5.09 0.09
+Flank Steak 587.55 2.47 (0.02)
+Kidney, Edible 55.00 0.25 0.02
+Fat, Inedible 54.77 1.27 0.12
+Bone 8.83 2.12 0.00
+Source: USDA Livestock, Poultry and Grain Market News Page 1 of 4
+General inquiries, please call: (202) 720-1990 or email: mymarketnews@usda.gov
+XML Format | JSON Format (API) | User Guides @ mpr.datamart.ams.usda.gov
+www.ams.usda.gov/lpgmn | https://mymarketnews.ams.usda.gov/viewreport/2463
+===== PAGE 2 =====
+National Weekly Cutter Cow Cutout And Boxed Cow Beef Cuts
+USDA Estimate Cutter Cow Carcass Cut-Out Value - Negotiated Sales
+Agricultural Marketing Service September 04, 2026
+Livestock, Poultry, and Grain Market News LM_XB461
+Email us with accessibility issues regarding this report.
+USDA National Boxed Cow Beef Cuts - Negotiated Sales
+FOB Plant basis negotiated sales for delivery within 0-21 day period.
+Current Volume - (one load equals 40,000 pounds)
+Boner/Breaker Cuts 15.05 loads -- 602,011 pounds
+Cutter/Canner Cuts 3.79 loads -- 151,576 pounds
+Boner/Breaker/Cutter/Canner Cuts 12.81 loads -- 512,270 pounds
+100% Lean Items 20.35 loads -- 814,175 pounds
+Frozen Cuts 0.10 loads -- 4,020 pounds
+# of Total Weighted Change from
+IMPS Sub-Primal Trades Pounds Average Prior Week
+BONER/BREAKER
+112 Rib, ribeye roll, 6-8 lbs. 0 0 0.00
+112 Rib, ribeye roll, 8-10 lbs. 26 56,119 710.18 (3.86)
+112 Rib, ribeye roll, 10-up lbs. 30 50,600 698.26 (23.82)
+112A Rib, ribeye roll-lip-on, 8-dn lbs. 16 28,763 758.11 (27.46)
+112A Rib, ribeye roll-lip-on, 8-up lbs. 0 0 0.00
+Chuck, boneless 85% 8 118,648 442.31 (15.71)
+Loin, Semi-Bnls Short Loin, 13-dn lbs. 0 0 0.00
+Loin, Semi-Bnls Short Loin, 13-up lbs. 0 0 0.00
+120 Chuck, brisket 22 44,646 415.09 (20.22)
+168 Round, top inside, 10-dn lbs. 5 32,904 376.16
+168 Round, top inside, 10-up lbs. 0 0 0.00
+169A Round, top inside c-off, 8-10 lbs. 0 0 0.00
+169A Round, top inside c-off, 10-14 lbs. 21 179,272 496.78 4.62
+169A Round, top inside c-off, 14-up lbs.
+171B Round, outside round
+171C Round, eye of round 41 55,571 486.28 49.28
+180 Loin, strip, bnls, 7-9 lbs. 0 0 0.00
+180 Loin, strip, bnls, 9-up lbs. 10 8,482 614.54 (1.90)
+182 Loin, sirloin butt 0 0 0.00
+184 Loin, top sirloin butt 11 11,619 400.68 (4.75)
+185A Loin, bottom sirloin butt flap, bnls. 6 7,247 611.80 76.32
+191A Loin, butt tender, peeled
+Source: USDA Livestock, Poultry and Grain Market News Page 2 of 4
+General inquiries, please call: (202) 720-1990 or email: mymarketnews@usda.gov
+XML Format | JSON Format (API) | User Guides @ mpr.datamart.ams.usda.gov
+www.ams.usda.gov/lpgmn | https://mymarketnews.ams.usda.gov/viewreport/2463
+===== PAGE 3 =====
+National Weekly Cutter Cow Cutout And Boxed Cow Beef Cuts
+USDA Estimate Cutter Cow Carcass Cut-Out Value - Negotiated Sales
+Agricultural Marketing Service September 04, 2026
+Livestock, Poultry, and Grain Market News LM_XB461
+Email us with accessibility issues regarding this report.
+CUTTER/CANNER
+112 Rib, ribeye roll, 4-6 lbs.
+112 Rib, ribeye roll, 6-8 lbs. 56 91,003 704.73 9.89
+112 Rib, ribeye roll, 8-up lbs. 21 52,248 697.58 12.19
+100% LEAN
+Inside round - Combo 32 210,572 485.41 (3.59)
+Inside round - Boxed 39 175,969 470.76 (7.59)
+Outside round
+Eye of round 20 62,722 480.65 (4.60)
+Flats and eyes - Combo 7 93,670 484.08 (17.26)
+Flats and eyes - Boxed 0 0 0.00
+Striploin 57 113,507 643.88 4.71
+S.P.B. - Combo 9 148,935 485.42 (11.44)
+S.P.B. - Boxed 0 0 0.00
+BONER/BREAKER & CUTTER/CANNER
+116B Chuck, chuck tender 17 31,197 434.16 (21.10)
+167A Round, knuckle, peeled 23 177,987 434.84 (57.46)
+190 Loin, tenderloin, 2-3 lbs. 9 7,613 839.24
+190 Loin, tenderloin, 3-4 lbs. 30 41,815 875.68 (14.20)
+190 Loin, tenderloin, 4-5 lbs. 28 37,166 926.61 17.60
+190 Loin, tenderloin, 5-up lbs. 42 73,811 967.90 (23.01)
+193 Flank, flank steak 48 56,329 587.55 (5.12)
+Flank, rough 81 86,352 508.79 (0.76)
+FROZEN BONER/BREAKER
+112 Rib, ribeye roll, 6-8 lbs. 0 0 0.00
+112 Rib, ribeye roll, 8-10 lbs. 0 0 0.00
+112 Rib, ribeye roll, 10-up lbs. 0 0 0.00
+112A Rib, ribeye roll-lip-on, 8-dn lbs. 0 0 0.00
+112A Rib, ribeye roll-lip-on, 8-up lbs. 0 0 0.00
+169A Round, top inside c-off, 8-10 lbs. 0 0 0.00
+169A Round, top inside c-off, 10-14 lbs. 0 0 0.00
+169A Round, top inside c-off, 14-up lbs. 0 0 0.00
+180 Loin, strip, bnls, 7-9 lbs. 0 0 0.00
+180 Loin, strip, bnls, 9-up lbs. 0 0 0.00
+Source: USDA Livestock, Poultry and Grain Market News Page 3 of 4
+General inquiries, please call: (202) 720-1990 or email: mymarketnews@usda.gov
+XML Format | JSON Format (API) | User Guides @ mpr.datamart.ams.usda.gov
+www.ams.usda.gov/lpgmn | https://mymarketnews.ams.usda.gov/viewreport/2463
+===== PAGE 4 =====
+National Weekly Cutter Cow Cutout And Boxed Cow Beef Cuts
+USDA Estimate Cutter Cow Carcass Cut-Out Value - Negotiated Sales
+Agricultural Marketing Service September 04, 2026
+Livestock, Poultry, and Grain Market News LM_XB461
+Email us with accessibility issues regarding this report.
+FROZEN CUTTER/CANNER
+112 Rib, ribeye roll, 4-6 lbs. 0 0 0.00
+112 Rib, ribeye roll, 6-8 lbs.
+112 Rib, ribeye roll, 8-up lbs. 0 0 0.00
+FROZEN BONER/BREAKER & CUTTER/CANNER
+190 Loin, tenderloin, 2-3 lbs. 0 0 0.00
+190 Loin, tenderloin, 3-4 lbs.
+190 Loin, tenderloin, 4-5 lbs. 0 0 0.00
+190 Loin, tenderloin, 5-up lbs. 0 0 0.00
+193 Flank, flank steak 0 0 0.00
+Source: USDA Livestock, Poultry and Grain Market News Page 4 of 4
+General inquiries, please call: (202) 720-1990 or email: mymarketnews@usda.gov
+XML Format | JSON Format (API) | User Guides @ mpr.datamart.ams.usda.gov
+www.ams.usda.gov/lpgmn | https://mymarketnews.ams.usda.gov/viewreport/2463
