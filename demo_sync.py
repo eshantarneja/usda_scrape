@@ -23,7 +23,7 @@ from config import SUPABASE_URL, SUPABASE_KEY
 
 logger = logging.getLogger(__name__)
 
-BEEF_REPORT_TYPES = ("daily_afternoon", "branded_beef", "ungraded_beef")
+BEEF_REPORT_TYPES = ("daily_afternoon", "branded_beef", "ungraded_beef", "cow_beef")
 
 
 def demo_enabled() -> bool:

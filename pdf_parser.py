@@ -56,6 +56,7 @@ class PDFParser:
         For branded_beef: Extracts from "Upper 2/3 Choice Items Cuts" section
         For ungraded_beef: Extracts from "Ungraded Cuts, Fat Limitations 1-6" section
         For daily_afternoon: Extracts from multiple sections (Choice, Select, Mixed, Ground Beef)
+        For cow_beef: Extracts the fresh cow cut sections (Boner/Breaker, Cutter/Canner, 100% Lean)
 
         Args:
             lines: List of text lines extracted from PDF
@@ -68,6 +69,8 @@ class PDFParser:
             return self._parse_daily_report(lines, report_type)
         elif report_type == 'pork_cuts':
             return self._parse_pork_report(lines, report_type)
+        elif report_type == 'cow_beef':
+            return self._parse_cow_report(lines, report_type)
         else:
             return self._parse_weekly_report(lines, report_type)
 
@@ -247,6 +250,99 @@ class PDFParser:
         from collections import Counter
         section_counts = Counter(p['category'] for p in pricing_data)
         for section, count in section_counts.items():
+            logger.info(f"  {section}: {count} records")
+        return pricing_data
+
+    # Cow report (LM_XB461 / ams_2463) line shape: IMPS DESC TRADES POUNDS WAVG [CHANGE]
+    # No fat-limitation digit, no low-high range; the prior-week change is optional
+    # and prints negatives in parentheses. IMPS code is optional (100% Lean items,
+    # "Chuck, boneless 85%", "Flank, rough" carry none).
+    COW_LINE = re.compile(
+        r'^(?:(\d{3}[A-Z]?)\s+)?(.+?)\s+(\d+)\s+([\d,]+)\s+([\d,.]+)(?:\s+\(?-?[\d,.]+\)?)?\s*$'
+    )
+    # Section markers are bare ALL-CAPS lines. Longer names first so that
+    # "FROZEN BONER/BREAKER & CUTTER/CANNER" is not read as "BONER/BREAKER".
+    COW_SECTIONS = [
+        ('FROZEN BONER/BREAKER & CUTTER/CANNER', False),
+        ('FROZEN CUTTER/CANNER', False),
+        ('FROZEN BONER/BREAKER', False),
+        ('BONER/BREAKER & CUTTER/CANNER', True),
+        ('100% LEAN', True),
+        ('CUTTER/CANNER', True),
+        ('BONER/BREAKER', True),
+    ]
+
+    COW_FURNITURE = ('usda', 'page ', 'mymarketnews', 'www.', 'agricultural marketing',
+                     'livestock, poultry', 'imps sub-primal', 'change from')
+
+    def _parse_cow_report(self, lines: List[str], report_type: str) -> List[Dict]:
+        """Parse the weekly cutter cow report (LM_XB461).
+
+        Page 1 is a cutout-value table with the same numeric shape as a cut
+        line, so nothing is parsed until the first section marker. The three
+        FROZEN sections repeat the fresh IMPS codes and are skipped. Rows with
+        zero trades, or with no numbers at all, are dropped. The section name
+        is stored as the category; there is no low/high range in this report.
+        """
+        pricing_data = []
+        current_section = None   # None until the first marker; False inside a skipped section
+        skip_section = True
+
+        logger.info(f"Processing {len(lines)} lines for cow report")
+
+        for line_idx, line in enumerate(lines):
+            stripped = line.strip()
+            if not stripped:
+                continue
+
+            marker = next((name for name, _ in self.COW_SECTIONS if stripped.upper() == name), None)
+            if marker is not None:
+                current_section = marker
+                skip_section = not dict(self.COW_SECTIONS)[marker]
+                logger.info(f"Found cow section at line {line_idx}: {marker}{' (skipped)' if skip_section else ''}")
+                continue
+
+            if current_section is None or skip_section:
+                continue
+            # Not the shared _is_header_row: its 'fl' indicator would eat
+            # "Flank", "Flats and eyes" and "butt flap". Page furniture only.
+            if any(k in stripped.lower() for k in self.COW_FURNITURE):
+                continue
+
+            match = self.COW_LINE.match(stripped)
+            if not match:
+                continue
+
+            imps_code = match.group(1)
+            description = match.group(2).strip()
+            trades = self._extract_number(match.group(3), is_integer=True)
+            pounds = self._extract_number(match.group(4), is_integer=True)
+            weighted_avg = self._extract_number(match.group(5))
+
+            if not trades or not pounds or not weighted_avg:
+                continue
+
+            product_name = f"{imps_code} - {description}" if imps_code else description
+            pricing_data.append({
+                'product_name': product_name,
+                'product_code': imps_code,
+                'price': weighted_avg,
+                'low_price': None,
+                'high_price': None,
+                'volume': pounds,
+                'report_type': report_type,
+                'category': current_section,
+                'additional_data': {
+                    'num_trades': trades,
+                    'imps_code': imps_code,
+                    'sub_primal': description
+                }
+            })
+            logger.debug(f"[{current_section}] Line {line_idx}: {product_name} - Avg: ${weighted_avg}, Volume: {pounds} lbs, Trades: {trades}")
+
+        logger.info(f"Extracted {len(pricing_data)} pricing records from cow report")
+        from collections import Counter
+        for section, count in Counter(p['category'] for p in pricing_data).items():
             logger.info(f"  {section}: {count} records")
         return pricing_data
 

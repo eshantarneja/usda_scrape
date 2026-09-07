@@ -32,6 +32,12 @@ REPORTS_CONFIG = {
         "schedule": "daily",  # Monday-Friday
         "report_type": "daily_afternoon"
     },
+    "cow_beef": {
+        "name": "National Weekly Cutter Cow Cutout And Boxed Cow Beef Cuts",
+        "pdf_url": f"{USDA_BASE_URL}/mnreports/ams_2463.pdf",  # 2463 = LM_XB461; 2461 is the steer/heifer weekly
+        "schedule": "weekly",  # Fridays
+        "report_type": "cow_beef"
+    },
     "pork_cuts": {
         "name": "National Daily Pork Report FOB Omaha",
         "pdf_url": f"{USDA_BASE_URL}/mnreports/ams_2498.pdf",
