@@ -257,9 +257,16 @@ def main():
     if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
 
+    # Demo-only reports (Prime) never enter the scraper's database: they skip
+    # the pipeline and go straight to Demo below.
+    demo_only = [r for r in args.reports if REPORTS_CONFIG.get(r, {}).get('demo_only')]
+    scraped = [r for r in args.reports if r not in demo_only]
+
     # Run pipeline
-    pipeline = USDAScraperPipeline()
-    success = pipeline.run(args.reports, args.force)
+    success = True
+    if scraped:
+        pipeline = USDAScraperPipeline()
+        success = pipeline.run(scraped, args.force)
 
     # Calculate metrics if requested
     if args.calculate_metrics and success:
@@ -276,11 +283,18 @@ def main():
     from demo_sync import demo_enabled, sync as demo_sync
     if demo_enabled():
         logger.info("Syncing beef reports to Demo...")
-        if not demo_sync(args.reports):
+        if not demo_sync(scraped):
             logger.error("Demo sync failed for at least one report (scrape itself succeeded)")
             success = False
+        if 'prime_beef' in demo_only:
+            import prime_report
+            logger.info("Loading the USDA Prime report into Demo (Demo only)...")
+            if not prime_report.sync():
+                logger.error("Prime load to Demo failed")
+                success = False
     else:
-        logger.info("Demo sync skipped: DEMO_SUPABASE_URL / DEMO_SUPABASE_KEY not set")
+        logger.info("Demo sync skipped: DEMO_SUPABASE_URL / DEMO_SUPABASE_KEY not set"
+                    + (f" (demo-only reports {demo_only} not loaded anywhere)" if demo_only else ""))
 
     # Exit with appropriate code
     exit(0 if success else 1)

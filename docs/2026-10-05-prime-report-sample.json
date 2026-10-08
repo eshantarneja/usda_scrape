@@ -1,0 +1,205 @@
+{
+ "reportSection": "Prime Cuts",
+ "results": [
+  {
+   "report_date": "10/05/2026",
+   "item_description": "Rib, ribeye, lip-on, bn-in (109E  1)",
+   "number_trades": "98",
+   "total_pounds": "167,966",
+   "price_range_low": "1,369.19",
+   "price_range_high": "1,885.70",
+   "weighted_average": "1,596.31",
+   "slug_id": "2460"
+  },
+  {
+   "report_date": "10/05/2026",
+   "item_description": "Rib, ribeye, bnls, light (112A  3)",
+   "number_trades": "37",
+   "total_pounds": "29,811",
+   "price_range_low": "1,525.75",
+   "price_range_high": "2,002.00",
+   "weighted_average": "1,861.97",
+   "slug_id": "2460"
+  },
+  {
+   "report_date": "10/05/2026",
+   "item_description": "Rib, ribeye, bnls, heavy (112A  3)",
+   "number_trades": "156",
+   "total_pounds": "376,237",
+   "price_range_low": "1,512.10",
+   "price_range_high": "2,000.00",
+   "weighted_average": "1,766.56",
+   "slug_id": "2460"
+  },
+  {
+   "report_date": "10/05/2026",
+   "item_description": "Chuck, roll, lxl, neck/off (116A  3)",
+   "number_trades": "55",
+   "total_pounds": "186,913",
+   "price_range_low": "557.00",
+   "price_range_high": "672.38",
+   "weighted_average": "604.10",
+   "slug_id": "2460"
+  },
+  {
+   "report_date": "10/05/2026",
+   "item_description": "Brisket, deckle-off, bnls (120  1)",
+   "number_trades": "56",
+   "total_pounds": "136,588",
+   "price_range_low": "503.12",
+   "price_range_high": "668.00",
+   "weighted_average": "568.84",
+   "slug_id": "2460"
+  },
+  {
+   "report_date": "10/05/2026",
+   "item_description": "Short Plate, short rib (123A  3)",
+   "number_trades": "22",
+   "total_pounds": "67,962",
+   "price_range_low": "762.54",
+   "price_range_high": "1,050.25",
+   "weighted_average": "858.39",
+   "slug_id": "2460"
+  },
+  {
+   "report_date": "10/05/2026",
+   "item_description": "Round, eye of round (171C  3)",
+   "number_trades": "19",
+   "total_pounds": "31,082",
+   "price_range_low": "403.00",
+   "price_range_high": "469.00",
+   "weighted_average": "419.36",
+   "slug_id": "2460"
+  },
+  {
+   "report_date": "10/05/2026",
+   "item_description": "Loin, short loin, 2x3 (174  1)",
+   "number_trades": "3",
+   "total_pounds": "4,357",
+   "price_range_low": "1,019.28",
+   "price_range_high": "1,264.00",
+   "weighted_average": "1,031.37",
+   "slug_id": "2460"
+  },
+  {
+   "report_date": "10/05/2026",
+   "item_description": "Loin, short loin, 0x1 (174  3)",
+   "number_trades": "47",
+   "total_pounds": "92,570",
+   "price_range_low": "1,053.50",
+   "price_range_high": "1,585.70",
+   "weighted_average": "1,203.17",
+   "slug_id": "2460"
+  },
+  {
+   "report_date": "10/05/2026",
+   "item_description": "Loin, strip loin, 1x1 (175  3)",
+   "number_trades": "17",
+   "total_pounds": "13,624",
+   "price_range_low": "1,235.75",
+   "price_range_high": "1,488.00",
+   "weighted_average": "1,333.80",
+   "slug_id": "2460"
+  },
+  {
+   "report_date": "10/05/2026",
+   "item_description": "Loin, strip bnls, heavy (180  1)",
+   "number_trades": null,
+   "total_pounds": null,
+   "price_range_low": null,
+   "price_range_high": null,
+   "weighted_average": null,
+   "slug_id": "2460"
+  },
+  {
+   "report_date": "10/05/2026",
+   "item_description": "Loin, strip loin bnls. 1x1 (  1)",
+   "number_trades": "",
+   "total_pounds": "",
+   "price_range_low": ".00",
+   "price_range_high": ".00",
+   "weighted_average": ".00",
+   "slug_id": "2460"
+  },
+  {
+   "report_date": "10/05/2026",
+   "item_description": "Loin, strip, bnls, 0x1 (180  3)",
+   "number_trades": "184",
+   "total_pounds": "377,181",
+   "price_range_low": "1,181.25",
+   "price_range_high": "1,698.50",
+   "weighted_average": "1,547.44",
+   "slug_id": "2460"
+  },
+  {
+   "report_date": "10/05/2026",
+   "item_description": "Loin, top butt, bnls, heavy (184  1)",
+   "number_trades": null,
+   "total_pounds": null,
+   "price_range_low": null,
+   "price_range_high": null,
+   "weighted_average": null,
+   "slug_id": "2460"
+  },
+  {
+   "report_date": "10/05/2026",
+   "item_description": "Loin, top butt, boneless (184  3)",
+   "number_trades": "63",
+   "total_pounds": "144,770",
+   "price_range_low": "542.77",
+   "price_range_high": "727.00",
+   "weighted_average": "607.56",
+   "slug_id": "2460"
+  },
+  {
+   "report_date": "10/05/2026",
+   "item_description": "Loin, top butt, CC (184B  3)",
+   "number_trades": "26",
+   "total_pounds": "73,691",
+   "price_range_low": "663.34",
+   "price_range_high": "860.00",
+   "weighted_average": "769.06",
+   "slug_id": "2460"
+  },
+  {
+   "report_date": "10/05/2026",
+   "item_description": "Loin, bottom sirloin, flap (185A  4)",
+   "number_trades": "42",
+   "total_pounds": "88,585",
+   "price_range_low": "882.00",
+   "price_range_high": "1,250.20",
+   "weighted_average": "977.42",
+   "slug_id": "2460"
+  },
+  {
+   "report_date": "10/05/2026",
+   "item_description": "Loin, sirloin, tri-tip, pld (185D  4)",
+   "number_trades": "15",
+   "total_pounds": "8,596",
+   "price_range_low": "732.15",
+   "price_range_high": "845.00",
+   "weighted_average": "772.58",
+   "slug_id": "2460"
+  },
+  {
+   "report_date": "10/05/2026",
+   "item_description": "Loin, tndrloin, trmd, heavy (189A  4)",
+   "number_trades": "108",
+   "total_pounds": "163,710",
+   "price_range_low": "1,974.80",
+   "price_range_high": "2,498.50",
+   "weighted_average": "2,234.78",
+   "slug_id": "2460"
+  },
+  {
+   "report_date": "10/05/2026",
+   "item_description": "Loin, butt tender, trimmed (191A  4)",
+   "number_trades": "7",
+   "total_pounds": "2,326",
+   "price_range_low": "1,824.00",
+   "price_range_high": "1,835.70",
+   "weighted_average": "1,830.01",
+   "slug_id": "2460"
+  }
+ ]
+}

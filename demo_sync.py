@@ -9,6 +9,8 @@ unique key), so re-running is always safe.
 Runs only when DEMO_SUPABASE_URL / DEMO_SUPABASE_KEY are set (Cloud Run job
 usda-scraper-dev carries them as secrets; the GitHub Actions prod workflow does
 not, so it is unaffected). Pork is not synced: Demo has no pork tree yet.
+Prime (prime_beef) never passes through the scraper's database: prime_report.py
+fetches it from USDA and sends it here through send_to_demo().
 
   python demo_sync.py                  # latest completed report per beef type
   python demo_sync.py --since 2026-09-01
@@ -24,6 +26,9 @@ from config import SUPABASE_URL, SUPABASE_KEY
 logger = logging.getLogger(__name__)
 
 BEEF_REPORT_TYPES = ("daily_afternoon", "branded_beef", "ungraded_beef", "cow_beef")
+# Reports that go to Demo only: fetched from USDA by their own module, never
+# written to the scraper's database first (prime_report.py).
+DEMO_ONLY_TYPES = ("prime_beef",)
 
 
 def demo_enabled() -> bool:
@@ -75,6 +80,29 @@ def _report_rows(src, report, products):
     return rows
 
 
+def _tag(payload) -> str:
+    return f"{payload['report_type']} {payload['report_date']} ({len(payload['rows'])} rows)"
+
+
+def send_to_demo(demo, payload):
+    """One report -> public.usda_boxed_beef_load. Returns the door's result, or None on failure."""
+    tag = _tag(payload)
+    try:
+        res = demo.rpc("usda_boxed_beef_load", {"p": payload}).execute().data or {}
+    except Exception as e:  # network / PostgREST error
+        logger.error(f"demo sync FAIL {tag}: {e}")
+        return None
+    if not res.get("ok"):
+        logger.error(f"demo sync FAIL {tag}: {res.get('error')}")
+        return None
+    sk = res.get("skipped") or []
+    logger.info(f"demo sync OK {tag}: {res.get('observations')} observations, "
+                f"{res.get('new_parts')} new products" + (f", {len(sk)} skipped" if sk else ""))
+    for x in sk:
+        logger.warning(f"demo sync skipped: {x.get('reason')} :: {x.get('line')}")
+    return res
+
+
 def sync(report_types=BEEF_REPORT_TYPES, since=None, latest_only=True, dry_run=False) -> bool:
     """Push reports to Demo. Returns True when every report loaded (or dry run)."""
     types = [rt for rt in report_types if rt in BEEF_REPORT_TYPES]
@@ -93,28 +121,16 @@ def sync(report_types=BEEF_REPORT_TYPES, since=None, latest_only=True, dry_run=F
     for rep in reports:
         payload = {"report_type": rep["report_type"], "report_date": rep["report_date"],
                    "pdf_url": rep.get("pdf_url"), "rows": _report_rows(src, rep, products)}
-        tag = f"{rep['report_type']} {rep['report_date']} ({len(payload['rows'])} rows)"
         if dry_run:
-            logger.info(f"demo sync DRY {tag}")
+            logger.info(f"demo sync DRY {_tag(payload)}")
             continue
-        try:
-            res = demo.rpc("usda_boxed_beef_load", {"p": payload}).execute().data or {}
-        except Exception as e:  # network / PostgREST error
-            logger.error(f"demo sync FAIL {tag}: {e}")
+        res = send_to_demo(demo, payload)
+        if res is None:
             ok = False
             continue
-        if not res.get("ok"):
-            logger.error(f"demo sync FAIL {tag}: {res.get('error')}")
-            ok = False
-            continue
-        sk = res.get("skipped") or []
         totals["observations"] += res.get("observations", 0)
         totals["new_parts"] += res.get("new_parts", 0)
-        totals["skipped"] += len(sk)
-        logger.info(f"demo sync OK {tag}: {res.get('observations')} observations, "
-                    f"{res.get('new_parts')} new products" + (f", {len(sk)} skipped" if sk else ""))
-        for s in sk:
-            logger.warning(f"demo sync skipped: {s.get('reason')} :: {s.get('line')}")
+        totals["skipped"] += len(res.get("skipped") or [])
     if not dry_run:
         logger.info(f"demo sync done: {totals}")
     return ok
@@ -125,13 +141,21 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--all", action="store_true", help="every completed report, oldest first")
     ap.add_argument("--since", help="reports on/after this date (YYYY-MM-DD)")
-    ap.add_argument("--type", choices=BEEF_REPORT_TYPES, action="append", help="one report type (repeatable)")
+    ap.add_argument("--type", choices=BEEF_REPORT_TYPES + DEMO_ONLY_TYPES, action="append",
+                    help="one report type (repeatable); prime_beef is fetched from USDA, not the scraper DB")
     ap.add_argument("--dry-run", action="store_true", help="fetch and print, write nothing")
     args = ap.parse_args()
     if not args.dry_run and not demo_enabled():
         raise SystemExit("set DEMO_SUPABASE_URL and DEMO_SUPABASE_KEY")
-    ok = sync(tuple(args.type) if args.type else BEEF_REPORT_TYPES,
-              since=args.since, latest_only=not (args.all or args.since), dry_run=args.dry_run)
+    types = tuple(args.type) if args.type else BEEF_REPORT_TYPES
+    ok = True
+    if set(types) & set(BEEF_REPORT_TYPES):
+        ok = sync(types, since=args.since, latest_only=not (args.all or args.since), dry_run=args.dry_run)
+    if "prime_beef" in types:
+        import prime_report
+        from datetime import date
+        since = date.fromisoformat(args.since) if args.since else (date(2000, 1, 1) if args.all else None)
+        ok = prime_report.sync(since=since, dry_run=args.dry_run) and ok
     raise SystemExit(0 if ok else 1)
 
 

@@ -38,6 +38,15 @@ REPORTS_CONFIG = {
         "schedule": "weekly",  # Fridays
         "report_type": "cow_beef"
     },
+    "prime_beef": {
+        "name": "National Weekly Boxed Beef Cuts For Prime Product - Negotiated Sales",
+        "pdf_url": f"{USDA_BASE_URL}/mnreports/ams_2460.pdf",  # 2460 = LM_XB456 (verified 2026-10-08)
+        "schedule": "weekly",  # Mondays
+        "report_type": "prime_beef",
+        # Demo only: prime_report.py fetches it from the USDA datamart and sends it to
+        # Demo's door. It is never written to this scraper's own database.
+        "demo_only": True,
+    },
     "pork_cuts": {
         "name": "National Daily Pork Report FOB Omaha",
         "pdf_url": f"{USDA_BASE_URL}/mnreports/ams_2498.pdf",
