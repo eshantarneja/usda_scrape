@@ -51,7 +51,7 @@ def archive_links(report_type: str, pages: int, timeout: int = 60) -> List[str]:
     return out
 
 
-def backfill(report_type: str, pages: int, since: date = None, dry_run: bool = False) -> bool:
+def backfill(report_type: str, pages: int, since: date = None, dry_run: bool = False, force: bool = False) -> bool:
     links = archive_links(report_type, pages)
     logger.info(f"{report_type}: {len(links)} archive link(s) on {pages} page(s)")
     if dry_run:
@@ -73,7 +73,7 @@ def backfill(report_type: str, pages: int, since: date = None, dry_run: bool = F
         if since and date.fromisoformat(report_date) < since:
             logger.info(f"{report_type}: {report_date} is before {since}; done")
             break
-        if not pipeline.process_report(report_type, force=False, pdf_url=url):
+        if not pipeline.process_report(report_type, force=force, pdf_url=url):
             ok = False
     return ok
 
@@ -85,11 +85,12 @@ def main():
     ap.add_argument("--since", help="stop at the first week before this date (YYYY-MM-DD)")
     ap.add_argument("--pages", type=int, default=17, help="ESMIS listing pages to walk (10 weeks each)")
     ap.add_argument("--dry-run", action="store_true", help="list the archive links, download and write nothing")
+    ap.add_argument("--force", action="store_true", help="re-parse weeks already in the database (after a parser fix)")
     args = ap.parse_args()
     since = date.fromisoformat(args.since) if args.since else None
     ok = True
     for rt in (args.report or POULTRY_TYPES):
-        ok = backfill(rt, args.pages, since, args.dry_run) and ok
+        ok = backfill(rt, args.pages, since, args.dry_run, args.force) and ok
     raise SystemExit(0 if ok else 1)
 
 

@@ -266,8 +266,10 @@ class PDFParser:
     # Long item names wrap onto the next line ("Breasts,Boneless/Skinless," / "Tom").
     POULTRY_TYPES = {'weekly_chicken': 'Chicken', 'weekly_turkey': 'Turkey'}
     POULTRY_BLOCK = re.compile(r'^(Chicken|Turkey),\s*(Whole|Parts?)\s*-\s*Cents Per Lb\s*$', re.I)
+    # The third slot is the program: Conventional on most sections; the turkey report also prints
+    # "Antibiotic Free" and "Organic" sections some weeks (seen in the 2025 archive).
     POULTRY_SECTION = re.compile(
-        r'^(Domestic|Export)\s*-\s*(Fresh|Frozen)\s*-\s*Conventional\s*-\s*(Delivered|FOB)\s*$', re.I)
+        r'^(Domestic|Export)\s*-\s*(Fresh|Frozen)\s*-\s*(Conventional|Antibiotic Free|Organic|No Antibiotics Ever|NAE)\s*-\s*(Delivered|FOB)\s*$', re.I)
     POULTRY_GROUPS = {
         'wog trading by size:': 'WOG',
         'whole body trading by size:': 'Whole Body',
@@ -312,9 +314,10 @@ class PDFParser:
                 continue
             m = self.POULTRY_SECTION.match(s)
             if m:
-                market, state = m.group(1).title(), m.group(2).title()
-                basis = 'FOB' if m.group(3).lower() == 'fob' else 'Delivered'
-                section = f"{market} - {state} - Conventional - {basis}"
+                market, state, program = m.group(1).title(), m.group(2).title(), m.group(3).title()
+                program = 'NAE' if program.lower() == 'nae' else program
+                basis = 'FOB' if m.group(4).lower() == 'fob' else 'Delivered'
+                section = f"{market} - {state} - {program} - {basis}"
                 last = None
                 logger.info(f"Found poultry section at line {line_idx}: {section}")
                 continue
@@ -348,6 +351,7 @@ class PDFParser:
                         'item': item,
                         'market': section.split(' - ')[0],
                         'state': section.split(' - ')[1],
+                        'program': section.split(' - ')[2],
                         'basis': section.split(' - ')[3],
                         'offer': m.group('offer'),
                         'change': tail['change'],

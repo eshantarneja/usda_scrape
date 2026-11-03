@@ -139,6 +139,30 @@ def test_turkey_parts_wraps_and_tail_columns():
     assert _find(rows, "Turkey Parts - Drumsticks, Tom", "Domestic - Frozen - Conventional - Delivered")["price"] == 100.81
 
 
+def test_turkey_program_sections_are_sections_not_item_text():
+    # Some 2025 weeks print "Antibiotic Free" / "Organic" sections; before the fix the header was glued
+    # onto the previous item ("Wings,Full-Cut, Tom Domestic - Frozen - Antibiotic Free - Delivered").
+    lines = ["Turkey, Part - Cents Per Lb",
+             "Domestic - Frozen - Conventional - Delivered",
+             "Offer Price Range Wtd Avg Change 1,000 lbs Wtd Avg 1,000 lbs",
+             "Wings,Full-Cut, Tom No 142.00 - 142.00 142.00 10.71 14 131.29 560",
+             "Domestic - Frozen - Antibiotic Free - Delivered",
+             "Offer Price Range Wtd Avg Change 1,000 lbs Wtd Avg 1,000 lbs",
+             "Wings,Full-Cut, Tom No 150.00 - 150.00 150.00 10",
+             "Domestic - Fresh - Organic - Delivered",
+             "Breasts,Boneless/Skinless, No 320.00 - 320.00 320.00 20",
+             "Tom"]
+    rows = PDFParser("unused.pdf").parse_pricing_data(lines, "weekly_turkey")
+    assert [r["product_name"] for r in rows] == ["Turkey Parts - Wings,Full-Cut, Tom",
+                                                 "Turkey Parts - Wings,Full-Cut, Tom",
+                                                 "Turkey Parts - Breasts,Boneless/Skinless, Tom"]
+    assert [r["category"] for r in rows] == ["Domestic - Frozen - Conventional - Delivered",
+                                             "Domestic - Frozen - Antibiotic Free - Delivered",
+                                             "Domestic - Fresh - Organic - Delivered"]
+    assert rows[1]["volume"] == 10_000 and rows[1]["additional_data"]["program"] == "Antibiotic Free"
+    assert rows[2]["additional_data"]["program"] == "Organic"
+
+
 def test_turkey_volume_only_tail_is_volume_not_change():
     rows = _turkey()
     r = _find(rows, "Turkey Parts - Wing Meat with Skin")
