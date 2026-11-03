@@ -34,11 +34,13 @@ logger = logging.getLogger(__name__)
 BEEF_REPORT_TYPES = ("daily_afternoon", "branded_beef", "ungraded_beef", "cow_beef")
 POULTRY_REPORT_TYPES = ("weekly_chicken", "weekly_turkey")
 PORK_REPORT_TYPES = ("pork_cuts",)
-SYNCED_TYPES = BEEF_REPORT_TYPES + POULTRY_REPORT_TYPES + PORK_REPORT_TYPES
+LAMB_REPORT_TYPES = ("lamb_cuts", "lamb_imported")
+SYNCED_TYPES = BEEF_REPORT_TYPES + POULTRY_REPORT_TYPES + PORK_REPORT_TYPES + LAMB_REPORT_TYPES
 # Which Demo door takes a report type's rows.
 DOORS = {**{t: "usda_boxed_beef_load" for t in BEEF_REPORT_TYPES},
          **{t: "usda_poultry_load" for t in POULTRY_REPORT_TYPES},
-         **{t: "usda_pork_load" for t in PORK_REPORT_TYPES}}
+         **{t: "usda_pork_load" for t in PORK_REPORT_TYPES},
+         **{t: "usda_lamb_load" for t in LAMB_REPORT_TYPES}}
 # Reports that go to Demo only: fetched from USDA by their own module, never
 # written to the scraper's database first (prime_report.py).
 DEMO_ONLY_TYPES = ("prime_beef",)

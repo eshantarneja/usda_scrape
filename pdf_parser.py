@@ -70,6 +70,8 @@ class PDFParser:
             return self._parse_daily_report(lines, report_type)
         elif report_type == 'pork_cuts':
             return self._parse_pork_report(lines, report_type)
+        elif report_type in self.LAMB_BLOCKS:
+            return self._parse_lamb_report(lines, report_type)
         elif report_type == 'cow_beef':
             return self._parse_cow_report(lines, report_type)
         elif report_type in self.POULTRY_TYPES:
@@ -648,6 +650,67 @@ class PDFParser:
         for category, count in category_counts.items():
             logger.info(f"  {category}: {count} records")
 
+        return pricing_data
+
+
+    # The two USDA lamb reports (2026-11-03, Demo 449). Each prints a fresh block and a frozen block;
+    # the block header is the only thing that says which. Rows with no trade print "0" or "-" and
+    # are not rows. LM_XL500 (lamb_cuts) rows: "<IMPS> <item> <trades> <pounds> <wtd avg> <change>";
+    # LM_XL552 (lamb_imported) rows: "<AUS|NZ> <item> <trades> <pounds> <low> - <high> <wtd avg>".
+    LAMB_BLOCKS = {
+        'lamb_cuts': {'fresh choice & prime cuts': 'Fresh', 'frozen choice & prime cuts': 'Frozen'},
+        'lamb_imported': {'negotiated sales, fresh': 'Fresh', 'negotiated sales, frozen': 'Frozen'},
+    }
+    _LAMB_CUTS_ROW = re.compile(r'^(.+?)\s+(\d+)\s+([\d,]+)\s+([\d,]+\.\d{2})\s+(-?[\d,]+\.\d{2})\s*$')
+    _LAMB_IMPORTED_ROW = re.compile(r'^(.+?)\s+(\d+)\s+([\d,]+)\s+([\d,]+\.\d{2})\s*-\s*([\d,]+\.\d{2})\s+([\d,]+\.\d{2})\s*$')
+
+    def _parse_lamb_report(self, lines: List[str], report_type: str) -> List[Dict]:
+        """Parse LM_XL500 (lamb_cuts) or LM_XL552 (lamb_imported): every priced row under its
+        fresh / frozen block, the item text kept whole in additional_data.sub_primal."""
+        blocks = self.LAMB_BLOCKS[report_type]
+        row_re = self._LAMB_CUTS_ROW if report_type == 'lamb_cuts' else self._LAMB_IMPORTED_ROW
+        pricing_data: List[Dict] = []
+        block = None
+        for line in lines:
+            t = line.strip()
+            if not t:
+                continue
+            key = t.lower()
+            if key in blocks:
+                block = blocks[key]
+                continue
+            if block is None:
+                continue
+            m = row_re.match(t)
+            if not m:
+                continue
+            name = m.group(1).strip()
+            if report_type == 'lamb_cuts':
+                trades = self._extract_number(m.group(2), is_integer=True)
+                pounds = self._extract_number(m.group(3), is_integer=True)
+                avg = self._extract_number(m.group(4))
+                low = high = None
+            else:
+                trades = self._extract_number(m.group(2), is_integer=True)
+                pounds = self._extract_number(m.group(3), is_integer=True)
+                low = self._extract_number(m.group(4))
+                high = self._extract_number(m.group(5))
+                avg = self._extract_number(m.group(6))
+            if not avg or not pounds:
+                continue
+            pricing_data.append({
+                'product_name': f"{block} - {name}",
+                'product_code': None,
+                'price': avg,
+                'low_price': low,
+                'high_price': high,
+                'volume': pounds,
+                'report_type': report_type,
+                'category': block,
+                'meat_type': 'lamb',
+                'additional_data': {'sub_primal': name, 'trades': trades},
+            })
+        logger.info(f"Extracted {len(pricing_data)} pricing records from {report_type}")
         return pricing_data
 
     def _parse_pork_line(self, line: str) -> Optional[Dict]:
