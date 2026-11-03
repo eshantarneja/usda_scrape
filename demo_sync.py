@@ -1,16 +1,18 @@
-"""Sync freshly scraped beef and poultry reports into the Demo global catalog.
+"""Sync freshly scraped beef, poultry and pork reports into the Demo global catalog.
 
 After the scraper writes a report into its own tables (usda_reports /
 usda_prices / usda_products), this pushes the same rows to Demo through a
 door: public.usda_boxed_beef_load(p jsonb) for beef (IMPS code → family,
 report section → grade) and public.usda_poultry_load(p jsonb) for the weekly
 chicken and turkey reports (USDA item name → family, section → fresh/frozen
-and basis). Both are deterministic and idempotent per report (upsert on the
+and basis), and public.usda_pork_load(p jsonb) for the National Daily Pork
+Report (each row's own item text → family and facts; the block header is not
+trusted). All are deterministic and idempotent per report (upsert on the
 observation's unique key), so re-running is always safe.
 
 Runs only when DEMO_SUPABASE_URL / DEMO_SUPABASE_KEY are set (Cloud Run job
 usda-scraper-dev carries them as secrets; the GitHub Actions prod workflow does
-not, so it is unaffected). Pork is not synced: Demo has no pork tree yet.
+not, so it is unaffected).
 Prime (prime_beef) never passes through the scraper's database: prime_report.py
 fetches it from USDA and sends it here through send_to_demo().
 
@@ -18,6 +20,7 @@ fetches it from USDA and sends it here through send_to_demo().
   python demo_sync.py --since 2026-09-01
   python demo_sync.py --all --dry-run  # full history, write nothing
   python demo_sync.py --type weekly_chicken --type weekly_turkey --all
+  python demo_sync.py --type pork_cuts --since 2025-12-18   # the pork backfill (Demo 438)
 """
 import argparse
 import logging
@@ -30,10 +33,12 @@ logger = logging.getLogger(__name__)
 
 BEEF_REPORT_TYPES = ("daily_afternoon", "branded_beef", "ungraded_beef", "cow_beef")
 POULTRY_REPORT_TYPES = ("weekly_chicken", "weekly_turkey")
-SYNCED_TYPES = BEEF_REPORT_TYPES + POULTRY_REPORT_TYPES
+PORK_REPORT_TYPES = ("pork_cuts",)
+SYNCED_TYPES = BEEF_REPORT_TYPES + POULTRY_REPORT_TYPES + PORK_REPORT_TYPES
 # Which Demo door takes a report type's rows.
 DOORS = {**{t: "usda_boxed_beef_load" for t in BEEF_REPORT_TYPES},
-         **{t: "usda_poultry_load" for t in POULTRY_REPORT_TYPES}}
+         **{t: "usda_poultry_load" for t in POULTRY_REPORT_TYPES},
+         **{t: "usda_pork_load" for t in PORK_REPORT_TYPES}}
 # Reports that go to Demo only: fetched from USDA by their own module, never
 # written to the scraper's database first (prime_report.py).
 DEMO_ONLY_TYPES = ("prime_beef",)
@@ -73,7 +78,7 @@ def _load_products(src):
 
 def _report_rows(src, report, products):
     r = (src.table("usda_prices")
-            .select("product_id, category, price, low_price, high_price, volume")
+            .select("product_id, category, price, low_price, high_price, volume, additional_data")
             .eq("report_id", report["id"]).limit(5000).execute())
     rows = []
     for x in r.data or []:
@@ -84,6 +89,8 @@ def _report_rows(src, report, products):
             "product_name": prod.get("product_name"),
             "price": x["price"], "low_price": x["low_price"],
             "high_price": x["high_price"], "volume": x["volume"],
+            # pork: the row's own item text (the block prefix in product_name is unreliable)
+            "sub_primal": (x.get("additional_data") or {}).get("sub_primal"),
         })
     return rows
 
@@ -116,7 +123,7 @@ def sync(report_types=SYNCED_TYPES, since=None, latest_only=True, dry_run=False)
     """Push reports to Demo. Returns True when every report loaded (or dry run)."""
     types = [rt for rt in report_types if rt in SYNCED_TYPES]
     if not types:
-        logger.info("demo sync: no beef or poultry report types requested, nothing to do")
+        logger.info("demo sync: no beef, poultry or pork report types requested, nothing to do")
         return True
     src = create_client(SUPABASE_URL, SUPABASE_KEY)
     reports = _list_reports(src, types, since, latest_only)

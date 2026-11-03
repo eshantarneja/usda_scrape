@@ -637,7 +637,7 @@ class PDFParser:
                 # This might be a category header (line without price data)
                 # Category headers are typically short text without numbers
                 if self._is_pork_category_header(line_stripped):
-                    current_category = line_stripped
+                    current_category = self.PORK_BLOCKS[line_stripped.lower().strip()]
                     logger.info(f"Found category header at line {line_idx}: {current_category}")
 
         logger.info(f"Extracted {len(pricing_data)} pricing records from pork report")
@@ -684,60 +684,20 @@ class PDFParser:
 
         return None
 
+    # The block headers LM_PK602 prints, and nothing else (2026-11-03). The old guess ("a short line
+    # with no numbers") turned every empty product row ("Butt Tender, FZN", "Tails, Gas") into a block,
+    # so the next real row was stored as "Butt Tender, FZN - - Backribs 2.0#/up", and the AI block
+    # (printed "AI (Added Ingreds)") was never a header, so its rows landed under "Variety".
+    PORK_BLOCKS = {
+        'loin': 'Loin', 'butt': 'Butt', 'picnic': 'Picnic', 'sparerib': 'Sparerib', 'ham': 'Ham',
+        'belly': 'Belly', 'jowl': 'Jowl', 'trim': 'Trim', 'variety': 'Variety',
+        'ai (added ingreds)': 'AI', 'ai (added ingredients)': 'AI', 'ai': 'AI',
+    }
+
     def _is_pork_category_header(self, line: str) -> bool:
-        """Check if a line is a pork category header.
-
-        Category headers are short text lines without numeric price data.
-        Examples: "Loin", "Butt", "Ham", "Belly", "Picnic", "Sparerib"
-
-        Args:
-            line: Text line to check
-
-        Returns:
-            True if this looks like a category header
-        """
-        # Known pork category headers
-        known_categories = [
-            'loin', 'butt', 'ham', 'belly', 'picnic', 'sparerib',
-            'jowl', 'variety', 'trim', 'fat', 'skin'
-        ]
-
-        line_lower = line.lower().strip()
-
-        # Check if this is a known category (exact or starts with)
-        for cat in known_categories:
-            if line_lower == cat or line_lower.startswith(cat + ' '):
-                return True
-
-        # Skip if line ends with '-' (these are product lines with no data)
-        if line.strip().endswith('-'):
-            return False
-
-        # Skip if line is too long (likely not a category header)
-        if len(line) > 30:
-            return False
-
-        # Skip if line contains price-like patterns
-        if re.search(r'\d+\.\d{2}', line):
-            return False
-
-        # Skip if line contains large numbers (like pounds)
-        if re.search(r'\d{3,}', line):
-            return False
-
-        # Skip common non-category lines
-        skip_patterns = ['total', 'average', 'source', 'usda', 'page', 'report',
-                        'national', 'weekly', 'daily', 'agricultural', 'marketing',
-                        'vac', 'fzn', 'combo', 'paper', 'poly', 'bnls', 'bone']
-        if any(skip in line_lower for skip in skip_patterns):
-            return False
-
-        # If it's a very short text line (1-2 words) with no numbers, it might be a category
-        words = line.split()
-        if len(words) <= 2 and not re.search(r'\d', line):
-            return True
-
-        return False
+        """A pork block header is one of the printed block names, exactly; anything else is a product row
+        (with or without a price)."""
+        return line.lower().strip() in self.PORK_BLOCKS
 
     def _clean_text(self, text: Optional[str]) -> str:
         """Clean and normalize text from PDF.
