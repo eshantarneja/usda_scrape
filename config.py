@@ -52,7 +52,25 @@ REPORTS_CONFIG = {
         "pdf_url": f"{USDA_BASE_URL}/mnreports/ams_2498.pdf",
         "schedule": "daily",  # Monday-Friday
         "report_type": "pork_cuts"
-    }
+    },
+    # Poultry (added 2026-11-02 for the Demo poultry catalog). Both are Friday reports in
+    # cents per lb: whole birds by weight class and the parts structure. The daily
+    # At-a-Glance (AJ_PY010) was discontinued 2025-03-25, so these are the anchors.
+    # Past weeks are on ESMIS (poultry_backfill.py); the mnreports PDF is the latest only.
+    "weekly_chicken": {
+        "name": "Weekly National Chicken Report",
+        "pdf_url": f"{USDA_BASE_URL}/mnreports/ams_3646.pdf",  # 3646 = Weekly National Chicken (verified 2026-11-02)
+        "schedule": "weekly",  # Fridays
+        "report_type": "weekly_chicken",
+        "esmis_slug": "weekly-national-chicken-report",
+    },
+    "weekly_turkey": {
+        "name": "Weekly National Turkey Report",
+        "pdf_url": f"{USDA_BASE_URL}/mnreports/ams_3647.pdf",  # 3647 = Weekly National Turkey (verified 2026-11-02)
+        "schedule": "weekly",  # Fridays
+        "report_type": "weekly_turkey",
+        "esmis_slug": "weekly-national-turkey-report",
+    },
 }
 
 # Logging configuration

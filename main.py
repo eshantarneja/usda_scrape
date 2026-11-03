@@ -87,12 +87,14 @@ class USDAScraperPipeline:
         # Fallback to today's date
         return datetime.now().strftime('%Y-%m-%d')
 
-    def process_report(self, report_type: str, force: bool = False) -> bool:
+    def process_report(self, report_type: str, force: bool = False, pdf_url: str = None) -> bool:
         """Process a single report type.
 
         Args:
             report_type: Type of report to process (e.g., 'branded_beef')
             force: Force processing even if report already exists
+            pdf_url: A past week's PDF instead of the report's latest-only URL
+                (poultry_backfill.py walks the ESMIS archive); stored as the report's pdf_url
 
         Returns:
             True if successful, False otherwise
@@ -106,7 +108,7 @@ class USDAScraperPipeline:
                 return False
 
             report_config = REPORTS_CONFIG[report_type]
-            pdf_url = report_config['pdf_url']
+            pdf_url = pdf_url or report_config['pdf_url']
 
             logger.info(f"Step 1: Downloading PDF from {pdf_url}")
 
@@ -282,7 +284,7 @@ def main():
     # is idempotent, so a re-run after a failure is safe.
     from demo_sync import demo_enabled, sync as demo_sync
     if demo_enabled():
-        logger.info("Syncing beef reports to Demo...")
+        logger.info("Syncing beef and poultry reports to Demo...")
         if not demo_sync(scraped):
             logger.error("Demo sync failed for at least one report (scrape itself succeeded)")
             success = False

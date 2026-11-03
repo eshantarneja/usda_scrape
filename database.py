@@ -233,7 +233,8 @@ class DatabaseManager:
         success_count = 0
 
         # Determine meat type based on report_type
-        meat_type = 'pork' if report_type == 'pork_cuts' else 'beef'
+        meat_type = {'pork_cuts': 'pork', 'weekly_chicken': 'chicken',
+                     'weekly_turkey': 'turkey'}.get(report_type, 'beef')
 
         for record in pricing_data:
             # First, ensure the product exists with meat type category
@@ -256,7 +257,7 @@ class DatabaseManager:
                 'low_price': record.get('low_price'),
                 'high_price': record.get('high_price'),
                 'volume': record.get('volume'),
-                'unit': 'USD',
+                'unit': record.get('unit', 'USD'),   # poultry prints cents/lb; beef and pork $/cwt as 'USD'
                 'category': record.get('category'),
                 'report_type': report_type,
                 'additional_data': record.get('additional_data', {})
