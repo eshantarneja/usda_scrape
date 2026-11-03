@@ -57,6 +57,7 @@ class PDFParser:
         For ungraded_beef: Extracts from "Ungraded Cuts, Fat Limitations 1-6" section
         For daily_afternoon: Extracts from multiple sections (Choice, Select, Mixed, Ground Beef)
         For cow_beef: Extracts the fresh cow cut sections (Boner/Breaker, Cutter/Canner, 100% Lean)
+        For weekly_chicken / weekly_turkey: every priced line of the whole-bird and parts blocks
 
         Args:
             lines: List of text lines extracted from PDF
@@ -71,6 +72,8 @@ class PDFParser:
             return self._parse_pork_report(lines, report_type)
         elif report_type == 'cow_beef':
             return self._parse_cow_report(lines, report_type)
+        elif report_type in self.POULTRY_TYPES:
+            return self._parse_poultry_report(lines, report_type)
         else:
             return self._parse_weekly_report(lines, report_type)
 
@@ -252,6 +255,151 @@ class PDFParser:
         for section, count in section_counts.items():
             logger.info(f"  {section}: {count} records")
         return pricing_data
+
+    # ------------------------------------------------------------------ poultry
+    # Weekly National Chicken (AMS 3646) and Turkey (AMS 3647) reports. Cents per lb.
+    # A report is blocks ("Chicken, Whole - Cents Per Lb", "Chicken, Parts - ...") of
+    # sections ("Domestic - Fresh - Conventional - FOB"); the chicken whole block also
+    # has groups ("WOG Trading by Size:", "Whole Body Trading by Size:", "Regional and
+    # Specific Destination Pricing:"). A line is: ITEM [Yes|No] LOW - HIGH WAVG and then,
+    # each optional and in this order, CHANGE, 1,000-LBS, PREV-WAVG, PREV-1,000-LBS.
+    # Long item names wrap onto the next line ("Breasts,Boneless/Skinless," / "Tom").
+    POULTRY_TYPES = {'weekly_chicken': 'Chicken', 'weekly_turkey': 'Turkey'}
+    POULTRY_BLOCK = re.compile(r'^(Chicken|Turkey),\s*(Whole|Parts?)\s*-\s*Cents Per Lb\s*$', re.I)
+    # The third slot is the program: Conventional on most sections; the turkey report also prints
+    # "Antibiotic Free" and "Organic" sections some weeks (seen in the 2025 archive).
+    POULTRY_SECTION = re.compile(
+        r'^(Domestic|Export)\s*-\s*(Fresh|Frozen)\s*-\s*(Conventional|Antibiotic Free|Organic|No Antibiotics Ever|NAE)\s*-\s*(Delivered|FOB)\s*$', re.I)
+    POULTRY_GROUPS = {
+        'wog trading by size:': 'WOG',
+        'whole body trading by size:': 'Whole Body',
+        'regional and specific destination pricing:': 'Regional',
+    }
+    POULTRY_LINE = re.compile(
+        r'^(?P<item>.+?)\s+(?:(?P<offer>Yes|No)\s+)?'
+        r'(?P<lo>\d[\d,]*\.\d+)\s*-\s*(?P<hi>\d[\d,]*\.\d+)\s+(?P<avg>\d[\d,]*\.\d+)'
+        r'(?P<rest>(?:\s+-?[\d,]+(?:\.\d+)?)*)\s*$'
+    )
+    POULTRY_FURNITURE = ('weekly national', 'agricultural marketing', 'livestock, poultry', 'email us',
+                         'report for:', 'current weeks trading', 'price range', 'offer price',
+                         'usda ams', 'general inquiries', 'https://', 'www.')
+
+    def _parse_poultry_report(self, lines: List[str], report_type: str) -> List[Dict]:
+        """Parse a Weekly National Chicken / Turkey report (AMS 3646 / 3647).
+
+        Every priced line is kept, export sections included (Demo's door decides
+        what it wants). Prices stay in cents per lb as printed (unit 'cents/lb');
+        volume is the printed thousands of pounds times 1,000. The product name
+        carries the bird and the block or group ("Chicken WOG - 2.51 to 3.50 LB",
+        "Chicken Parts - Breast - B/S", "Turkey Whole - Whole Young, Hen, Basted,
+        8-16 lb, U.S. Grade A"); the category is the section line, normalised.
+        """
+        bird = self.POULTRY_TYPES[report_type]
+        pricing_data: List[Dict] = []
+        block = section = group = None
+        last: Optional[Dict] = None   # the record a wrapped item name continues
+
+        logger.info(f"Processing {len(lines)} lines for {report_type} report")
+
+        for line_idx, line in enumerate(lines):
+            s = ' '.join(line.split())
+            if not s or s == '.':
+                continue
+
+            m = self.POULTRY_BLOCK.match(s)
+            if m:
+                block = 'Parts' if m.group(2).lower().startswith('part') else 'Whole'
+                group, last = None, None
+                logger.info(f"Found poultry block at line {line_idx}: {bird} {block}")
+                continue
+            m = self.POULTRY_SECTION.match(s)
+            if m:
+                market, state, program = m.group(1).title(), m.group(2).title(), m.group(3).title()
+                program = 'NAE' if program.lower() == 'nae' else program
+                basis = 'FOB' if m.group(4).lower() == 'fob' else 'Delivered'
+                section = f"{market} - {state} - {program} - {basis}"
+                last = None
+                logger.info(f"Found poultry section at line {line_idx}: {section}")
+                continue
+            g = self.POULTRY_GROUPS.get(s.lower())
+            if g:
+                group, last = g, None
+                continue
+            if any(k in s.lower() for k in self.POULTRY_FURNITURE):
+                last = None
+                continue
+
+            m = self.POULTRY_LINE.match(s)
+            if m and block and section:
+                item = m.group('item').strip().rstrip(':').strip()
+                tail = self._poultry_tail(m.group('rest'))
+                volume = tail['volume']
+                record = {
+                    'product_name': self._poultry_name(bird, block, group, item),
+                    'product_code': None,
+                    'price': self._extract_number(m.group('avg')),
+                    'low_price': self._extract_number(m.group('lo')),
+                    'high_price': self._extract_number(m.group('hi')),
+                    'volume': volume * 1000 if volume is not None else None,
+                    'unit': 'cents/lb',
+                    'report_type': report_type,
+                    'category': section,
+                    'additional_data': {
+                        'bird': bird,
+                        'block': block,
+                        'group': group,
+                        'item': item,
+                        'market': section.split(' - ')[0],
+                        'state': section.split(' - ')[1],
+                        'program': section.split(' - ')[2],
+                        'basis': section.split(' - ')[3],
+                        'offer': m.group('offer'),
+                        'change': tail['change'],
+                        'prev_price': tail['prev_price'],
+                        'prev_volume': tail['prev_volume'] * 1000 if tail['prev_volume'] is not None else None,
+                    },
+                }
+                if record['price']:
+                    pricing_data.append(record)
+                    last = record
+                else:
+                    last = None
+                continue
+
+            # A bare text line right after a priced line is the rest of its item name
+            # ("National Composite Whole" + "Bird:", "Mechanically Separated, 15-" + "20% Fat Content").
+            if last is not None and not re.search(r'\d[\d,]*\.\d+\s*-\s*\d', s):
+                item = last['additional_data']['item']
+                cont = s.strip().rstrip(':').strip()
+                item = item + cont if item.endswith('-') else f"{item} {cont}"
+                last['additional_data']['item'] = item
+                last['product_name'] = self._poultry_name(bird, block, last['additional_data']['group'], item)
+                continue
+            last = None
+
+        logger.info(f"Extracted {len(pricing_data)} pricing records from {report_type} report")
+        from collections import Counter
+        for sec, count in Counter(p['category'] for p in pricing_data).items():
+            logger.info(f"  {sec}: {count} records")
+        return pricing_data
+
+    @staticmethod
+    def _poultry_name(bird: str, block: str, group: Optional[str], item: str) -> str:
+        label = group if (block == 'Whole' and group) else block
+        return f"{bird} {label} - {item}"
+
+    def _poultry_tail(self, rest: Optional[str]) -> Dict:
+        """CHANGE, 1,000-LBS, PREV-WAVG, PREV-1,000-LBS, each optional, told apart by shape:
+        a price has a decimal point, a volume never does."""
+        out = {'change': None, 'volume': None, 'prev_price': None, 'prev_volume': None}
+        for tok in (rest or '').split():
+            if '.' in tok:
+                key = 'change' if (out['change'] is None and out['volume'] is None) else 'prev_price'
+            else:
+                key = 'volume' if out['volume'] is None else 'prev_volume'
+            if out[key] is None:
+                out[key] = self._extract_number(tok, is_integer=('.' not in tok))
+        return out
 
     # Cow report (LM_XB461 / ams_2463) line shape: IMPS DESC TRADES POUNDS WAVG [CHANGE]
     # No fat-limitation digit, no low-high range; the prior-week change is optional
@@ -489,7 +637,7 @@ class PDFParser:
                 # This might be a category header (line without price data)
                 # Category headers are typically short text without numbers
                 if self._is_pork_category_header(line_stripped):
-                    current_category = line_stripped
+                    current_category = self.PORK_BLOCKS[line_stripped.lower().strip()]
                     logger.info(f"Found category header at line {line_idx}: {current_category}")
 
         logger.info(f"Extracted {len(pricing_data)} pricing records from pork report")
@@ -536,60 +684,20 @@ class PDFParser:
 
         return None
 
+    # The block headers LM_PK602 prints, and nothing else (2026-11-03). The old guess ("a short line
+    # with no numbers") turned every empty product row ("Butt Tender, FZN", "Tails, Gas") into a block,
+    # so the next real row was stored as "Butt Tender, FZN - - Backribs 2.0#/up", and the AI block
+    # (printed "AI (Added Ingreds)") was never a header, so its rows landed under "Variety".
+    PORK_BLOCKS = {
+        'loin': 'Loin', 'butt': 'Butt', 'picnic': 'Picnic', 'sparerib': 'Sparerib', 'ham': 'Ham',
+        'belly': 'Belly', 'jowl': 'Jowl', 'trim': 'Trim', 'variety': 'Variety',
+        'ai (added ingreds)': 'AI', 'ai (added ingredients)': 'AI', 'ai': 'AI',
+    }
+
     def _is_pork_category_header(self, line: str) -> bool:
-        """Check if a line is a pork category header.
-
-        Category headers are short text lines without numeric price data.
-        Examples: "Loin", "Butt", "Ham", "Belly", "Picnic", "Sparerib"
-
-        Args:
-            line: Text line to check
-
-        Returns:
-            True if this looks like a category header
-        """
-        # Known pork category headers
-        known_categories = [
-            'loin', 'butt', 'ham', 'belly', 'picnic', 'sparerib',
-            'jowl', 'variety', 'trim', 'fat', 'skin'
-        ]
-
-        line_lower = line.lower().strip()
-
-        # Check if this is a known category (exact or starts with)
-        for cat in known_categories:
-            if line_lower == cat or line_lower.startswith(cat + ' '):
-                return True
-
-        # Skip if line ends with '-' (these are product lines with no data)
-        if line.strip().endswith('-'):
-            return False
-
-        # Skip if line is too long (likely not a category header)
-        if len(line) > 30:
-            return False
-
-        # Skip if line contains price-like patterns
-        if re.search(r'\d+\.\d{2}', line):
-            return False
-
-        # Skip if line contains large numbers (like pounds)
-        if re.search(r'\d{3,}', line):
-            return False
-
-        # Skip common non-category lines
-        skip_patterns = ['total', 'average', 'source', 'usda', 'page', 'report',
-                        'national', 'weekly', 'daily', 'agricultural', 'marketing',
-                        'vac', 'fzn', 'combo', 'paper', 'poly', 'bnls', 'bone']
-        if any(skip in line_lower for skip in skip_patterns):
-            return False
-
-        # If it's a very short text line (1-2 words) with no numbers, it might be a category
-        words = line.split()
-        if len(words) <= 2 and not re.search(r'\d', line):
-            return True
-
-        return False
+        """A pork block header is one of the printed block names, exactly; anything else is a product row
+        (with or without a price)."""
+        return line.lower().strip() in self.PORK_BLOCKS
 
     def _clean_text(self, text: Optional[str]) -> str:
         """Clean and normalize text from PDF.
