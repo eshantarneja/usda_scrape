@@ -64,6 +64,23 @@ REPORTS_CONFIG = {
         "report_type": "weekly_chicken",
         "esmis_slug": "weekly-national-chicken-report",
     },
+    # Lamb (added 2026-11-03 for the Demo lamb catalog, migration 449). Both in $/cwt.
+    # lamb_cuts is the domestic 5-day rolling average, every weekday; lamb_imported is the
+    # Australian / New Zealand weekly, FOB cold storage. Demo reads both through usda_lamb_load.
+    "lamb_cuts": {
+        "name": "National 5-Day Rolling Average Boxed Lamb Cuts - Negotiated Sales",
+        "pdf_url": f"{USDA_BASE_URL}/mnreports/ams_2648.pdf",  # 2648 = LM_XL500 (verified 2026-11-03)
+        "schedule": "daily",  # Monday-Friday
+        "report_type": "lamb_cuts",
+        "esmis_slug": "national-5-day-rolling-average-boxed-lamb-cuts-negotiated-sales",
+    },
+    "lamb_imported": {
+        "name": "National Weekly Lamb Carcass and Lamb Cuts - Imported Product",
+        "pdf_url": f"{USDA_BASE_URL}/mnreports/ams_2650.pdf",  # 2650 = LM_XL552 (verified 2026-11-03)
+        "schedule": "weekly",  # Mondays
+        "report_type": "lamb_imported",
+        "esmis_slug": "national-weekly-lamb-carcass-and-lamb-cuts-imported-product",
+    },
     "weekly_turkey": {
         "name": "Weekly National Turkey Report",
         "pdf_url": f"{USDA_BASE_URL}/mnreports/ams_3647.pdf",  # 3647 = Weekly National Turkey (verified 2026-11-02)
